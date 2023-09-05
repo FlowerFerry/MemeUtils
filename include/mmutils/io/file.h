@@ -42,6 +42,7 @@ inline FILE* mmu_fopen(
         free(path);
         return NULL;
     }
+    path[u16len] = L'\0';
 
     u16len = mmutf_char_size_u16from8((const uint8_t*)_mode, _mlen);
     if (u16len < 1) {
@@ -61,6 +62,7 @@ inline FILE* mmu_fopen(
         free(mode);
         return NULL;
     }
+    mode[u16len] = L'\0';
 
     fp = _wfopen(path, mode);
     free(path);
