@@ -1,6 +1,6 @@
 
-#ifndef MMUPP_NETWORK_PACKAGE_HPP_INCLUDED
-#define MMUPP_NETWORK_PACKAGE_HPP_INCLUDED
+#ifndef MMUPP_STREAM_PACKAGE_HPP_INCLUDED
+#define MMUPP_STREAM_PACKAGE_HPP_INCLUDED
 
 #include <memepp/buffer.hpp>
 #include <memepp/buffer_view.hpp>
@@ -9,7 +9,7 @@
 #include "../chrono/passive_timer.hpp"
 
 namespace mmupp {
-namespace network {
+namespace stream {
 
     struct package_preproc
     {
@@ -307,4 +307,4 @@ namespace network {
 };
 };
 
-#endif // !MMUPP_NETWORK_PACKAGE_HPP_INCLUDED
+#endif // !MMUPP_STREAM_PACKAGE_HPP_INCLUDED
