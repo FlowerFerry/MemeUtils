@@ -16,6 +16,8 @@
 
 #include <stdio.h>
 
+#include <mmutils/io/file.h>
+
 #include <memepp/string.hpp>
 #include <memepp/convert/fmt.hpp>
 #include <memepp/hash/std_hash.hpp>
@@ -260,7 +262,7 @@ namespace app {
         path_ = _path;
 
         auto path = fmt::format("{}/{}.json", path_, code_);
-        FILE* fp = fopen(path.data(), "rb");
+        FILE* fp = mmu_fopen(path.data(), path.size(), "rb", 2);
         if (!fp) {
             return std::make_tuple(-1, mm_from(fmt::format("open file(path:{}) failed", path)));
         }
