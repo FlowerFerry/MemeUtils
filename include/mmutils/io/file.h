@@ -70,7 +70,7 @@ inline FILE* mmu_fopen(
     return fp;
 #else
     if (_path[_slen] == '\0')
-        path = _path;
+        path = (char*)_path;
     else {
         path = (char*)malloc(sizeof(char) * (_slen + 1));
         if (!path)
@@ -80,7 +80,7 @@ inline FILE* mmu_fopen(
     }
 
     if (_mode[_mlen] == '\0')
-        mode = _mode;
+        mode = (char*)_mode;
     else {
         mode = (char*)malloc(sizeof(char) * (_mlen + 1));
         if (!mode) {
