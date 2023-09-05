@@ -18,8 +18,8 @@ inline FILE* mmu_fopen(
     wchar_t* path = NULL;
     wchar_t* mode = NULL;
 #else
-    const char* path = NULL;
-    const char* mode = NULL;
+    char* path = NULL;
+    char* mode = NULL;
 #endif
 
     if (_slen < 0)
