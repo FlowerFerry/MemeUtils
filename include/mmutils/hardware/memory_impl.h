@@ -29,7 +29,8 @@ inline int mmu_get_memory_status(struct mmu_memory_status *status)
         return -1;
     
     char buf[256] = { 0 };
-    uint64_t vmalloc_used = 0;
+    uint64_t vmalloc_used  = 0;
+    uint64_t vmalloc_total = 0;
     while (fgets(buf, sizeof(buf), fp) != NULL)
     {
         if (strncmp(buf, "MemTotal:", 9) == 0)
@@ -37,7 +38,7 @@ inline int mmu_get_memory_status(struct mmu_memory_status *status)
         else if (strncmp(buf, "MemAvailable:", 13) == 0)
             status->available_physical = strtoull(buf + 13, NULL, 10) * 1024;
         else if (strncmp(buf, "VmallocTotal:", 13) == 0)
-            status->total_virtual += strtoull(buf + 13, NULL, 10) * 1024;
+            vmalloc_total = strtoull(buf + 13, NULL, 10) * 1024;
         else if (strncmp(buf, "VmallocUsed:", 12) == 0)
             vmalloc_used = strtoull(buf + 12, NULL, 10) * 1024;
         else if (strncmp(buf, "SwapTotal:", 10) == 0)
@@ -45,8 +46,12 @@ inline int mmu_get_memory_status(struct mmu_memory_status *status)
         else if (strncmp(buf, "SwapFree:", 9) == 0)
             status->available_virtual += strtoull(buf + 9, NULL, 10) * 1024;
     }
-    status->available_virtual += status->total_virtual - vmalloc_used;
-    status->load_physical = (status->total_physical - status->available_physical) * 100 / status->total_physical;
+    status->total_virtual += vmalloc_total;
+    status->available_virtual += vmalloc_total - vmalloc_used;
+    if (status->total_physical == 0)
+        status->load_physical = 0;
+    else
+        status->load_physical = (status->total_physical - status->available_physical) * 100 / status->total_physical;
     fclose(fp);
 #else
     #error "<mmu_get_memory_status> not implemented"
