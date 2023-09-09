@@ -2,9 +2,11 @@
 #ifndef MMUPPAPP_LMDB_group_HPP_INCLUDED
 #define MMUPPAPP_LMDB_group_HPP_INCLUDED
 
+#include <memepp/string.hpp>
 #include <memepp/buffer_view.hpp>
 #include <megopp/util/scope_cleanup.h>
 #include <mmutilspp/paths/program_path.hpp>
+#include "lmdb_env.hpp"
 
 #include <liblmdb/lmdb.h>
 #include <ghc/filesystem.hpp>
@@ -16,41 +18,23 @@
 
 namespace mmupp::app {
     
-    struct lmdb_env
-    {
-        lmdb_env() = delete;
-        
-        inline lmdb_env(::MDB_env* _obj)
-            : _obj(_obj)
-        {}
-
-        lmdb_env(const lmdb_env&) = delete;
-        lmdb_env(lmdb_env&&) = default;
-        
-        inline ~lmdb_env()
-        {
-            if (MEGO_SYMBOL__LIKELY(_obj != NULL))
-            {
-                ::mdb_env_close(_obj);
-            }
-        }
-
-        lmdb_env& operator=(const lmdb_env&) = delete;
-        lmdb_env& operator=(lmdb_env&&) = default;
-        
-        inline constexpr ::MDB_env* native_handle() const noexcept { return _obj; }
-
-    private:
-        ::MDB_env* _obj;
-    };
-    using lmdb_env_ptr = std::shared_ptr<lmdb_env>;
-
     struct lmdb_group
     {
         lmdb_group();
         ~lmdb_group();
 
         void set_dir_path(const memepp::string_view& _path);
+        void set_db_mapsize(size_t _size);
+
+        inline memepp::string dir_path() const { 
+            std::lock_guard<std::mutex> lock(mtx_);
+            return dir_path_; 
+        }
+        
+        inline size_t db_mapsize() const { 
+            std::lock_guard<std::mutex> lock(mtx_);
+            return db_mapsize_ * db_count_; 
+        }
 
         std::tuple<cmnerrno_t, memepp::string> get_value(
             const memepp::buffer_view& _key,
@@ -83,14 +67,16 @@ namespace mmupp::app {
         memepp::string file_prefix_;
         memepp::string file_suffix_;
         int db_count_;
+        size_t db_mapsize_;
         mutable std::map<int, lmdb_env_ptr> envs_;
     };
 
     lmdb_group::lmdb_group(): 
-        dir_path_(mmupp::paths::relative_with_program_path("/dbs")),
+        dir_path_(mmupp::paths::relative_with_program_path("dbs")),
         file_prefix_("lt"),
         file_suffix_("db"),
-        db_count_(10)
+        db_count_(10),
+        db_mapsize_(5242880)
     {
     }
 
@@ -101,6 +87,12 @@ namespace mmupp::app {
     {
         std::lock_guard<std::mutex> lock(mtx_);
         dir_path_ = _path.to_string();
+    }
+
+    inline void lmdb_group::set_db_mapsize(size_t _size)
+    {
+        std::lock_guard<std::mutex> lock(mtx_);
+        db_mapsize_ = _size;
     }
 
     inline std::tuple<cmnerrno_t, memepp::string> lmdb_group::get_value(
@@ -304,7 +296,7 @@ namespace mmupp::app {
             ::mdb_env_close(env);
         });
 
-        ec = ::mdb_env_set_mapsize(env, 5242880);
+        ec = ::mdb_env_set_mapsize(env, db_mapsize_);
         if (MEGO_SYMBOL__UNLIKELY(ec != 0)) {
             return std::make_tuple(ec, nullptr);
         }

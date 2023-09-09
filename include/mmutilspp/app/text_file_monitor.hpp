@@ -194,7 +194,7 @@ namespace mmupp::app {
     }
 
     template<typename _Object>
-    void txtfile_monitor<_Object>::__on_file_changed(const memepp::string& _data)
+    void txtfile_monitor<_Object>::__on_file_changed(const memepp::string_view& _data)
     {
         std::unique_lock<std::mutex> locker(mutex_);
         if (parse_callback_ == nullptr)
