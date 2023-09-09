@@ -7,6 +7,7 @@
 #include <thread>
 #include <memory>
 #include <vector>
+#include <chrono>
 #include <set>
 
 #include <megopp/util/scope_cleanup.h>
@@ -28,7 +29,9 @@ namespace chrono {
 			isStart_(false),
 			isOnce_(false),
 			interval_(0),
-			count_(0)
+			count_(0),
+			cb_(nullptr),
+			userdata_(nullptr)
 		{}
 
 		passive_timer(const std::weak_ptr<ticker>& _ticker) noexcept :
@@ -36,12 +39,14 @@ namespace chrono {
 			isStart_(false),
 			isOnce_(false),
 			interval_(0),
-			count_(0)
+			count_(0),
+			cb_(nullptr),
+			userdata_(nullptr)
 		{}
 
 		virtual ~passive_timer();
 
-        inline void set_ticker(const std::weak_ptr<ticker>& _ticker) noexcept { ticker_ = _ticker; }
+        virtual inline void set_ticker(const std::weak_ptr<ticker>& _ticker) noexcept { ticker_ = _ticker; }
 
 		inline constexpr void on(callback_t* _cb, void* _u) noexcept
 		{
@@ -176,6 +181,133 @@ namespace chrono {
         std::set<passive_timer*> wait_removes_;
 	};
 	using ticker_ptr = std::shared_ptr<ticker>;
+
+	struct intervalometer : public passive_timer
+	{
+		intervalometer():
+			intervalometer_cb_(nullptr),
+			intervalometer_userdata_(nullptr),
+			is_stop_(true),
+			sec_interval_(1),
+			sec_offset_(0)
+		{}
+		
+		intervalometer(const std::weak_ptr<ticker>& _ticker) noexcept: 
+			intervalometer_cb_(nullptr),
+			intervalometer_userdata_(nullptr),
+			passive_timer(_ticker),
+			is_stop_(true),
+			sec_interval_(1),
+			sec_offset_(0)
+		{}
+
+		inline void set_repeat(int _sec_interval, int _sec_offset = 0) noexcept
+		{
+    		if (_sec_interval < 1)
+        		return;
+			sec_interval_ = _sec_interval;
+			
+    		if (_sec_offset < 0)
+        		return;
+    		if (_sec_offset >  _sec_interval)
+        		_sec_offset %= _sec_interval;
+			sec_offset_ = _sec_offset;
+		}
+
+		inline constexpr void on(callback_t* _cb, void* _u) noexcept
+		{
+			intervalometer_cb_ = _cb; intervalometer_userdata_ = _u;
+		};
+
+		inline void start(mgu_timestamp_t _curr) noexcept
+		{
+			if (is_start())
+				return;
+			
+			is_stop_ = false;
+			passive_timer::on(on_intervalometer, this);
+			passive_timer::start_once(__calc_next_ms_interval());
+		}
+
+		inline void stop() noexcept
+		{
+			is_stop_ = true;
+			passive_timer::cancel();
+		}
+
+		inline bool is_start() const noexcept
+		{
+			return !is_stop_;
+		}
+
+		static inline bool on_intervalometer(
+			passive_timer* _timer, void* _u) noexcept
+		{
+			auto self = reinterpret_cast<intervalometer*>(_u);
+			if (self->is_stop_)
+				return false;
+			
+			return self->__on_intervalometer();
+		}
+	private:
+		inline int __calc_next_ms_interval() const noexcept
+		{
+			auto sec = std::chrono::seconds(sec_interval_ + sec_offset_);
+			if (sec > std::chrono::hours(24))
+			{
+				return -1;
+			}
+
+			auto current_time = std::chrono::system_clock::now();
+			std::chrono::time_point<std::chrono::system_clock> start_time_point;
+			std::chrono::seconds range;
+			std::time_t current_time_t = std::chrono::system_clock::to_time_t(current_time);
+			std::tm* current_tm = std::gmtime(&current_time_t);
+
+			if (sec > std::chrono::hours(1))
+			{
+				current_tm->tm_min = 0;
+				current_tm->tm_sec = 0;
+				start_time_point = std::chrono::system_clock::from_time_t(std::mktime(current_tm));
+				range = std::chrono::hours(24);
+			}
+			else if (sec > std::chrono::minutes(1))
+			{
+				current_tm->tm_sec = 0;
+				start_time_point = std::chrono::system_clock::from_time_t(std::mktime(current_tm));
+				range = std::chrono::hours(1);
+			}
+			else {
+				start_time_point = std::chrono::system_clock::from_time_t(std::mktime(current_tm));
+				range = std::chrono::minutes(1);
+			}
+
+			auto cumulative = std::chrono::duration_cast<std::chrono::milliseconds>(
+				current_time - start_time_point).count();
+
+			if (sec_offset_ && cumulative < sec_offset_ * 1000)
+				return sec_offset_ * 1000 - cumulative;
+
+			auto cumulative_next = cumulative - sec_off
+		}
+
+		inline bool __on_intervalometer() noexcept
+		{
+			if (intervalometer_cb_) {
+				auto b = intervalometer_cb_(this, intervalometer_userdata_);
+				if (b) 
+					passive_timer::start_once(__calc_next_ms_interval());
+				return b;
+			}
+			return true;
+		}
+
+		passive_timer::callback_t* intervalometer_cb_;
+		void* intervalometer_userdata_;
+		int is_stop_;
+		int sec_interval_;
+		int sec_offset_;
+	};
 
 	inline passive_timer::~passive_timer()
 	{
