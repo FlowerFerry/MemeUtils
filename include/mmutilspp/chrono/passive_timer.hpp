@@ -182,8 +182,10 @@ namespace chrono {
 	};
 	using ticker_ptr = std::shared_ptr<ticker>;
 
-	struct intervalometer : public passive_timer
+	struct intervalometer : protected passive_timer
 	{
+		typedef bool callback_t(intervalometer*, void*);
+		
 		intervalometer():
 			intervalometer_cb_(nullptr),
 			intervalometer_userdata_(nullptr),
@@ -258,37 +260,45 @@ namespace chrono {
 				return -1;
 			}
 
-			auto current_time = std::chrono::system_clock::now();
-			std::chrono::time_point<std::chrono::system_clock> start_time_point;
+			auto curr_ts = mgu_timestamp_get();
 			std::chrono::seconds range;
-			std::time_t current_time_t = std::chrono::system_clock::to_time_t(current_time);
-			std::tm* current_tm = std::gmtime(&current_time_t);
+			mgu_time_t start_ts;
+            mgu_time_t curr_t = curr_ts / 1000;
+			struct tm curr_tm;
+			if (mgu_gmtime_s(&curr_t, &curr_tm) == NULL)
+                return -1;
 
 			if (sec > std::chrono::hours(1))
 			{
-				current_tm->tm_min = 0;
-				current_tm->tm_sec = 0;
-				start_time_point = std::chrono::system_clock::from_time_t(std::mktime(current_tm));
+				curr_tm.tm_min = 0;
+				curr_tm.tm_sec = 0;
+                start_ts = mgu_mktime_utc(&curr_tm);
 				range = std::chrono::hours(24);
 			}
 			else if (sec > std::chrono::minutes(1))
 			{
-				current_tm->tm_sec = 0;
-				start_time_point = std::chrono::system_clock::from_time_t(std::mktime(current_tm));
+				curr_tm.tm_sec = 0;
+				start_ts = mgu_mktime_utc(&curr_tm);
 				range = std::chrono::hours(1);
 			}
 			else {
-				start_time_point = std::chrono::system_clock::from_time_t(std::mktime(current_tm));
+				start_ts = mgu_mktime_utc(&curr_tm);
 				range = std::chrono::minutes(1);
 			}
 
-			auto cumulative = std::chrono::duration_cast<std::chrono::milliseconds>(
-				current_time - start_time_point).count();
+			auto cumulative = curr_ts - start_ts * 1000;
 
 			if (sec_offset_ && cumulative < sec_offset_ * 1000)
 				return sec_offset_ * 1000 - cumulative;
 
-			auto cumulative_next = cumulative - sec_off
+			auto cumulative_next = ((cumulative / (sec_interval_ * 1000)) + 1);
+			cumulative_next = cumulative_next * (sec_interval_ * 1000) + sec_offset_ * 1000;
+			
+			auto range_msec = std::chrono::duration_cast<std::chrono::milliseconds>(range).count();
+			if (cumulative_next >= range_msec)
+				return range_msec - cumulative;
+			
+			return cumulative_next - cumulative;
 		}
 
 		inline bool __on_intervalometer() noexcept
@@ -302,7 +312,7 @@ namespace chrono {
 			return true;
 		}
 
-		passive_timer::callback_t* intervalometer_cb_;
+		callback_t* intervalometer_cb_;
 		void* intervalometer_userdata_;
 		int is_stop_;
 		int sec_interval_;
