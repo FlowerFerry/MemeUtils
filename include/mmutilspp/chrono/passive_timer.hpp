@@ -228,7 +228,8 @@ namespace chrono {
 			
 			is_stop_ = false;
 			passive_timer::on(on_intervalometer, this);
-			passive_timer::start_once(__calc_next_ms_interval());
+			passive_timer::set_interval(__calc_next_ms_interval(_curr));
+			passive_timer::start_once(_curr);
 		}
 
 		inline void stop() noexcept
@@ -252,7 +253,7 @@ namespace chrono {
 			return self->__on_intervalometer();
 		}
 	private:
-		inline int __calc_next_ms_interval() const noexcept
+		inline int __calc_next_ms_interval(mgu_timestamp_t _curr) const noexcept
 		{
 			auto sec = std::chrono::seconds(sec_interval_ + sec_offset_);
 			if (sec > std::chrono::hours(24))
@@ -260,39 +261,43 @@ namespace chrono {
 				return -1;
 			}
 
-			auto curr_ts = mgu_timestamp_get();
+			//auto curr_ts = mgu_timestamp_get();
 			std::chrono::seconds range;
-			mgu_time_t start_ts;
-            mgu_time_t curr_t = curr_ts / 1000;
-			struct tm curr_tm;
-			if (mgu_gmtime_s(&curr_t, &curr_tm) == NULL)
-                return -1;
+			mgu_timestamp_t start_ts;
+            //mgu_time_t curr_t = _curr / 1000;
+			//struct tm curr_tm;
+			//if (mgu_gmtime_s(&curr_t, &curr_tm) == NULL)
+   //             return -1;
 
 			if (sec > std::chrono::hours(1))
 			{
-				curr_tm.tm_min = 0;
-				curr_tm.tm_sec = 0;
-                start_ts = mgu_mktime_utc(&curr_tm);
+				//curr_tm.tm_min = 0;
+				//curr_tm.tm_sec = 0;
+    //            start_ts = mgu_mktime_utc(&curr_tm);
+				start_ts = mgu_timestamp_round_to_day(_curr, mgu_round_down);
 				range = std::chrono::hours(24);
 			}
 			else if (sec > std::chrono::minutes(1))
 			{
-				curr_tm.tm_sec = 0;
-				start_ts = mgu_mktime_utc(&curr_tm);
+				//curr_tm.tm_sec = 0;
+				//start_ts = mgu_mktime_utc(&curr_tm);
+                start_ts = mgu_timestamp_round_to_hour(_curr, 1, mgu_round_down);
 				range = std::chrono::hours(1);
 			}
 			else {
-				start_ts = mgu_mktime_utc(&curr_tm);
+				//start_ts = mgu_mktime_utc(&curr_tm);
+                start_ts = mgu_timestamp_round_to_minute(_curr, 1, mgu_round_down);
 				range = std::chrono::minutes(1);
 			}
 
-			auto cumulative = curr_ts - start_ts * 1000;
+			auto cumulative = _curr - start_ts;
 
 			if (sec_offset_ && cumulative < sec_offset_ * 1000)
 				return sec_offset_ * 1000 - cumulative;
 
-			auto cumulative_next = ((cumulative / (sec_interval_ * 1000)) + 1);
-			cumulative_next = cumulative_next * (sec_interval_ * 1000) + sec_offset_ * 1000;
+			auto cumulative_next = cumulative - sec_offset_ * 1000;
+			cumulative_next = ((cumulative_next / (sec_interval_ * 1000)) + 1);
+			cumulative_next =   cumulative_next * (sec_interval_ * 1000) + sec_offset_ * 1000;
 			
 			auto range_msec = std::chrono::duration_cast<std::chrono::milliseconds>(range).count();
 			if (cumulative_next >= range_msec)
@@ -305,8 +310,11 @@ namespace chrono {
 		{
 			if (intervalometer_cb_) {
 				auto b = intervalometer_cb_(this, intervalometer_userdata_);
-				if (b) 
-					passive_timer::start_once(__calc_next_ms_interval());
+				if (b) {
+                    auto ts = mgu_timestamp_get();
+                    passive_timer::set_interval(__calc_next_ms_interval(ts));
+					passive_timer::start_once(ts);
+				}
 				return b;
 			}
 			return true;
