@@ -273,15 +273,17 @@ namespace mmupp::app {
     {
         std::lock_guard<std::mutex> lock(mtx_);
         auto it = envs_.find(_index);
-        if (it != envs_.end()) {
+        if (it != envs_.end()) 
+        {
             return std::make_tuple(0, it->second);
         }
         
-        auto db_path = memepp::c_format(2048, "%s/%s.%d.%s",
+        char str[2048];
+        snprintf(str, 2048, "%s/%s.%d.%s",
             dir_path_.c_str(), file_prefix_.c_str(), _index, file_suffix_.c_str());
 
         std::error_code errc;
-        ghc::filesystem::create_directories(mm_to<std::string>(db_path), errc);
+        ghc::filesystem::create_directories(str, errc);
         if (errc) {
             return std::make_tuple(-(errc.value()), nullptr);
         }
@@ -302,9 +304,9 @@ namespace mmupp::app {
         }
 
 #if defined(MDBX_LIFORECLAIM)
-        ec = ::mdb_env_open(env, db_path.c_str(), MDB_CREATE | MDB_WRITEMAP | MDBX_LIFORECLAIM, 0664);
+        ec = ::mdb_env_open(env, str, MDB_CREATE | MDB_WRITEMAP | MDBX_LIFORECLAIM, 0664);
 #else
-        ec = ::mdb_env_open(env, db_path.c_str(), MDB_CREATE | MDB_WRITEMAP, 0664);
+        ec = ::mdb_env_open(env, str, MDB_CREATE | MDB_WRITEMAP, 0664);
 #endif
         
         if (MEGO_SYMBOL__UNLIKELY(ec != 0)) {
