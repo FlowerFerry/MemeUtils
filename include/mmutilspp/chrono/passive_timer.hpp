@@ -293,7 +293,7 @@ namespace chrono {
 			auto cumulative = _curr - start_ts;
 
 			if (sec_offset_ && cumulative < sec_offset_ * 1000)
-				return sec_offset_ * 1000 - cumulative;
+				return int(sec_offset_ * 1000 - cumulative);
 
 			auto cumulative_next = cumulative - sec_offset_ * 1000;
 			cumulative_next = ((cumulative_next / (sec_interval_ * 1000)) + 1);
@@ -301,9 +301,9 @@ namespace chrono {
 			
 			auto range_msec = std::chrono::duration_cast<std::chrono::milliseconds>(range).count();
 			if (cumulative_next >= range_msec)
-				return range_msec - cumulative;
+				return int(range_msec - cumulative);
 			
-			return cumulative_next - cumulative;
+			return int(cumulative_next - cumulative);
 		}
 
 		inline bool __on_intervalometer() noexcept
