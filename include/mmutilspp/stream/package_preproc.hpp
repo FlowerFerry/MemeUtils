@@ -2,6 +2,7 @@
 #ifndef MMUPP_STREAM_PACKAGE_HPP_INCLUDED
 #define MMUPP_STREAM_PACKAGE_HPP_INCLUDED
 
+#include <mego/err/ec.h>
 #include <memepp/buffer.hpp>
 #include <memepp/buffer_view.hpp>
 #include <memepp/variable_buffer.hpp>
@@ -13,11 +14,11 @@ namespace stream {
 
     struct package_preproc
     {
-        typedef void(recv_fn_t)(const memepp::buffer_view& _buf, package_preproc*, void* _userdata);
-        typedef int (calc_len_fn_t)(
+        typedef mgec_t(recv_cb_t)(const memepp::buffer_view& _buf, package_preproc*, void* _userdata);
+        typedef int (calc_len_cb_t)(
             const memepp::buffer_view& _curr, 
             const memepp::buffer_view& _wait, size_t* _length, void* _userdata);
-        typedef bool(checksum_succ_fn_t)(const memepp::buffer_view& _buf, void* _userdata);
+        typedef bool(checksum_succ_cb_t)(const memepp::buffer_view& _buf, void* _userdata);
         
         package_preproc(void* _userdata = nullptr):
             userdata_(_userdata),
@@ -32,17 +33,18 @@ namespace stream {
             {
                 package_preproc* p = static_cast<package_preproc*>(_userdata);
                 // TO_DO
-            }, _userdata);
+                return true;
+            }, this);
         }
         
         virtual int raw_input(const memepp::buffer_view& _buf, mgu_timestamp_t _now);
         
-        inline constexpr void set_recv_cb(recv_fn_t* _cb) noexcept
+        inline constexpr void set_recv_cb(recv_cb_t* _cb) noexcept
         {
             recv_cb_ = _cb;
         }
 
-        inline constexpr void set_calc_len_cb(calc_len_fn_t* _cb) noexcept
+        inline constexpr void set_calc_len_cb(calc_len_cb_t* _cb) noexcept
         {
             calc_len_cb_ = _cb;
         }
@@ -82,9 +84,8 @@ namespace stream {
             return maxLimitPackageSize_;
         }
         
-        uint32_t check_poll(mgu_timestamp_t _now) const;
-
-        void poll(mgu_timestamp_t _now);
+        int poll_check(mgu_timestamp_t _now) const;
+        mgec_t poll(mgu_timestamp_t _now);
 
     private:
 
@@ -92,9 +93,9 @@ namespace stream {
             const memepp::buffer_view& _buf, mgu_timestamp_t _now, mmint_t* _offset);
 
         void* userdata_;
-        recv_fn_t* recv_cb_;
-        calc_len_fn_t* calc_len_cb_;
-        checksum_succ_fn_t* checksum_succ_cb_;
+        recv_cb_t* recv_cb_;
+        calc_len_cb_t* calc_len_cb_;
+        checksum_succ_cb_t* checksum_succ_cb_;
         chrono::passive_timer recv_wait_timer_;
         memepp::buffer headMatch_;
         size_t minLimitPackageSize_;
@@ -284,24 +285,25 @@ namespace stream {
         return 0;
     }
     
-    inline uint32_t package_preproc::check_poll(mgu_timestamp_t _now) const
+    inline int package_preproc::poll_check(mgu_timestamp_t _now) const
     {
         auto iv = recv_wait_timer_.due_in();
         if (!iv)
             return 0;
         if (!recv_wait_cache_.empty())
             return 0;
-        return iv;
+        return int(iv);
     }
 
-    inline void package_preproc::poll(mgu_timestamp_t _now)
+    inline mgec_t package_preproc::poll(mgu_timestamp_t _now)
     {
         if (!recv_wait_cache_.empty())
         {
             raw_input({}, _now);
         }
         
-        recv_wait_timer_.timing_continue(_now);
+        recv_wait_timer_.timing(_now);
+        return 0;
     }
 
 };
