@@ -37,7 +37,7 @@ namespace stream {
             }, this);
         }
         
-        virtual int raw_input(const memepp::buffer_view& _buf, mgu_timestamp_t _now);
+        virtual mgec_t raw_input(const memepp::buffer_view& _buf, mgu_timestamp_t _now);
         
         inline constexpr void set_recv_cb(recv_cb_t* _cb) noexcept
         {
@@ -89,7 +89,7 @@ namespace stream {
 
     private:
 
-        inline int raw_input_part(
+        inline mgec_t raw_input_part(
             const memepp::buffer_view& _buf, mgu_timestamp_t _now, mmint_t* _offset);
 
         void* userdata_;
@@ -105,12 +105,12 @@ namespace stream {
         bool headMatched_;
     };
 
-    inline int package_preproc::raw_input(const memepp::buffer_view& _buf, mgu_timestamp_t _now)
+    inline mgec_t package_preproc::raw_input(const memepp::buffer_view& _buf, mgu_timestamp_t _now)
     {
         if (!recv_wait_cache_.empty()) {
             mmint_t offset = 0;
             int ec = raw_input_part(recv_wait_cache_, _now, &offset);
-            if (ec < 0 && ec != MMENO__POSIX_OFFSET(EAGAIN))
+            if (ec < 0 && ec != MGEC__AGAIN)
             {
                 return ec;
             }
@@ -125,7 +125,7 @@ namespace stream {
         if (!_buf.empty()) {
             mmint_t offset = 0;
             int ec = raw_input_part(_buf, _now, &offset);
-            if (ec < 0 && ec != MMENO__POSIX_OFFSET(EAGAIN))
+            if (ec < 0 && ec != MGEC__AGAIN)
             {
                 return ec;
             }
@@ -140,7 +140,7 @@ namespace stream {
         return 0;
     }
 
-    inline int package_preproc::raw_input_part(
+    inline mgec_t package_preproc::raw_input_part(
         const memepp::buffer_view& _buf, mgu_timestamp_t _now, mmint_t* _offset)
     {
         *_offset = 0;
@@ -165,7 +165,7 @@ namespace stream {
                         if (index + headMatch_.size() > _buf.size())
                         {
                             *_offset = index;
-                            return MMENO__POSIX_OFFSET(EAGAIN);
+                            return MGEC__AGAIN;
                         }
                         else
                         {
@@ -174,7 +174,7 @@ namespace stream {
                             {
                                 if (index > 0) {
                                     *_offset = index;
-                                    return MMENO__POSIX_OFFSET(EAGAIN);
+                                    return MGEC__AGAIN;
                                 }
                                 break;
                             }
@@ -184,17 +184,17 @@ namespace stream {
                 if (index == _buf.size()) 
                 {
                     *_offset = index;
-                    return MMENO__POSIX_OFFSET(EAGAIN);
+                    return MGEC__AGAIN;
                 }
                 headMatched_ = true;
             }
             
             size_t calc_len = 0;
             if (calc_len_cb_(_buf, {}, &calc_len, userdata_))
-                return MMENO__POSIX_OFFSET(EPROTO);
+                return MGEC__PROTO;
 
             if (calc_len > max_limit_package_size())
-                return MMENO__POSIX_OFFSET(EPROTO);
+                return MGEC__PROTO;
 
             if (_buf.size() < calc_len) {
                 recv_curr_cache_.append(_buf);
@@ -208,7 +208,7 @@ namespace stream {
                 memepp::buffer_view{ _buf.data(), mmint_t(calc_len) }, userdata_))
             {
                 *_offset = calc_len;
-                return MMENO__POSIX_OFFSET(EPROTO);
+                return MGEC__PROTO;
             }
 
             recv_cb_(memepp::buffer_view{ _buf.data(), mmint_t(calc_len) }, this, userdata_);
@@ -228,7 +228,7 @@ namespace stream {
                         if (index + headMatch_.size() > recv_curr_cache_.size())
                         {
                             *_offset = index;
-                            return MMENO__POSIX_OFFSET(EAGAIN);
+                            return MGEC__AGAIN;
                         }
                         else
                         {
@@ -246,15 +246,15 @@ namespace stream {
                 if (index == recv_curr_cache_.size())
                 {
                     recv_curr_cache_.clear();
-                    return MMENO__POSIX_OFFSET(EAGAIN);
+                    return MGEC__AGAIN;
                 }
 
                 size_t calc_len = 0;
                 if (calc_len_cb_(recv_curr_cache_, _buf, &calc_len, userdata_))
-                    return MMENO__POSIX_OFFSET(EPROTO);
+                    return MGEC__PROTO;
 
                 if (calc_len > max_limit_package_size())
-                    return MMENO__POSIX_OFFSET(EPROTO);
+                    return MGEC__PROTO;
 
                 if (recv_curr_cache_.size() + _buf.size() < calc_len) {
                     recv_curr_cache_.append(_buf);
@@ -271,7 +271,7 @@ namespace stream {
                     memepp::buffer_view{ recv_curr_cache_.data(), mmint_t(calc_len) }, userdata_))
                 {
                     *_offset = diff;
-                    return MMENO__POSIX_OFFSET(EPROTO);
+                    return MGEC__PROTO;
                 }
                 
                 recv_cb_(recv_curr_cache_, this, userdata_);
