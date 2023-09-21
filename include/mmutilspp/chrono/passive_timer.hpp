@@ -416,7 +416,6 @@ namespace chrono {
 			
 			++it;
 		}
-
 		timers_.insert(timers_.end(), _timer);
 	}
 	
@@ -463,7 +462,10 @@ namespace chrono {
 				//locked_ = false;
 
 				if (remove_and_iteration(it)) 
+				{
+					locked_ = false;
 					return true;
+				}
 
                 auto backup = *it;
 				it = timers_.erase(it);
