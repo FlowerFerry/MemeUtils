@@ -84,8 +84,8 @@ namespace stream {
             return maxLimitPackageSize_;
         }
         
-        int poll_check(mgu_timestamp_t _now) const;
-        mgec_t poll(mgu_timestamp_t _now);
+        mmint_t poll_check(mgu_timestamp_t _now) const;
+        mgec_t  poll(mgu_timestamp_t _now);
 
     private:
 
@@ -285,14 +285,14 @@ namespace stream {
         return 0;
     }
     
-    inline int package_preproc::poll_check(mgu_timestamp_t _now) const
+    inline mmint_t package_preproc::poll_check(mgu_timestamp_t _now) const
     {
         auto iv = recv_wait_timer_.due_in();
         if (!iv)
             return 0;
         if (!recv_wait_cache_.empty())
             return 0;
-        return int(iv);
+        return mmint_t(iv);
     }
 
     inline mgec_t package_preproc::poll(mgu_timestamp_t _now)
