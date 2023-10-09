@@ -24,9 +24,10 @@ namespace stream {
             userdata_(_userdata),
             recv_cb_(nullptr),
             calc_len_cb_(nullptr),
-            minLimitPackageSize_(0),
-            maxLimitPackageSize_(SIZE_MAX),
-            headMatched_(false)
+            checksum_succ_cb_(nullptr),
+            min_limit_package_size_(0),
+            max_limit_package_size_(SIZE_MAX),
+            head_matched_(false)
         {
             recv_wait_timer_.set_interval(3000);
             recv_wait_timer_.on([](chrono::passive_timer* _timer, void* _userdata) 
@@ -49,14 +50,19 @@ namespace stream {
             calc_len_cb_ = _cb;
         }
 
+        inline constexpr void set_checksum_succ_cb(checksum_succ_cb_t* _cb) noexcept
+        {
+            checksum_succ_cb_ = _cb;
+        }
+
         inline constexpr void set_min_limit_package_size(size_t _size) noexcept
         {
-            minLimitPackageSize_ = _size;
+            min_limit_package_size_ = _size;
         }
 
         inline constexpr void set_max_limit_package_size(size_t _size) noexcept
         {
-            maxLimitPackageSize_ = _size;
+            max_limit_package_size_ = _size;
         }
         
         inline constexpr void set_userdata(void* _userdata) noexcept
@@ -66,7 +72,7 @@ namespace stream {
         
         inline void set_head_match(const memepp::buffer_view& _buf) noexcept
         {
-            headMatch_ = _buf.to_buffer();
+            head_match_ = _buf.to_buffer();
         }
 
         inline void set_wait_timeout(int _ms) noexcept
@@ -76,12 +82,12 @@ namespace stream {
 
         inline constexpr size_t min_limit_package_size() const noexcept
         {
-            return minLimitPackageSize_;
+            return min_limit_package_size_;
         }
 
         inline constexpr size_t max_limit_package_size() const noexcept
         {
-            return maxLimitPackageSize_;
+            return max_limit_package_size_;
         }
         
         mmint_t poll_check(mgu_timestamp_t _now) const;
@@ -97,12 +103,12 @@ namespace stream {
         calc_len_cb_t* calc_len_cb_;
         checksum_succ_cb_t* checksum_succ_cb_;
         chrono::passive_timer recv_wait_timer_;
-        memepp::buffer headMatch_;
-        size_t minLimitPackageSize_;
-        size_t maxLimitPackageSize_;
+        memepp::buffer head_match_;
+        size_t min_limit_package_size_;
+        size_t max_limit_package_size_;
         memepp::variable_buffer recv_wait_cache_;
         memepp::variable_buffer recv_curr_cache_;
-        bool headMatched_;
+        bool head_matched_;
     };
 
     inline mgec_t package_preproc::raw_input(const memepp::buffer_view& _buf, mgu_timestamp_t _now)
@@ -147,7 +153,7 @@ namespace stream {
         if (recv_curr_cache_.empty()) {
             if (_buf.size() < min_limit_package_size())
             {
-                headMatched_ = false;
+                head_matched_ = false;
                 recv_curr_cache_.append(_buf);
                 *_offset = _buf.size();
                 if (!recv_wait_timer_.is_start())
@@ -155,14 +161,14 @@ namespace stream {
                 return 0;
             }
             
-            if (!headMatch_.empty()) {
+            if (!head_match_.empty()) {
 
                 size_t index = 0;
                 for (; index < _buf.size(); ++index)
                 {
-                    if (_buf.at(index) == headMatch_.at(0))
+                    if (_buf.at(index) == head_match_.at(0))
                     {
-                        if (index + headMatch_.size() > _buf.size())
+                        if (index + head_match_.size() > _buf.size())
                         {
                             *_offset = index;
                             return MGEC__AGAIN;
@@ -170,7 +176,7 @@ namespace stream {
                         else
                         {
                             if (memcmp(_buf.data() + index, 
-                                headMatch_.data(), headMatch_.size()) == 0)
+                                head_match_.data(), head_match_.size()) == 0)
                             {
                                 if (index > 0) {
                                     *_offset = index;
@@ -186,7 +192,7 @@ namespace stream {
                     *_offset = index;
                     return MGEC__AGAIN;
                 }
-                headMatched_ = true;
+                head_matched_ = true;
             }
             
             size_t calc_len = 0;
@@ -218,14 +224,14 @@ namespace stream {
             return 0;
         }
         else {
-            if (!headMatch_.empty() && !headMatched_) 
+            if (!head_match_.empty() && !head_matched_) 
             {
                 size_t index = 0;
                 for (; index < recv_curr_cache_.size(); ++index)
                 {
-                    if (recv_curr_cache_.at(index) == headMatch_.at(0))
+                    if (recv_curr_cache_.at(index) == head_match_.at(0))
                     {
-                        if (index + headMatch_.size() > recv_curr_cache_.size())
+                        if (index + head_match_.size() > recv_curr_cache_.size())
                         {
                             *_offset = index;
                             return MGEC__AGAIN;
@@ -233,7 +239,7 @@ namespace stream {
                         else
                         {
                             if (memcmp(recv_curr_cache_.data() + index,
-                                headMatch_.data(), headMatch_.size()) == 0)
+                                head_match_.data(), head_match_.size()) == 0)
                             {
                                 if (index > 0) {
                                     recv_curr_cache_.remove(0, index);
