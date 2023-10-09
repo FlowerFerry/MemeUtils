@@ -15,10 +15,10 @@ namespace stream {
     struct package_preproc
     {
         typedef mgec_t(recv_cb_t)(const memepp::buffer_view& _buf, package_preproc*, void* _userdata);
-        typedef int (calc_len_cb_t)(
+        typedef mgec_t(calc_len_cb_t)(
             const memepp::buffer_view& _curr, 
             const memepp::buffer_view& _wait, size_t* _length, void* _userdata);
-        typedef bool(checksum_succ_cb_t)(const memepp::buffer_view& _buf, void* _userdata);
+        typedef mgec_t(checksum_succ_cb_t)(const memepp::buffer_view& _buf, void* _userdata);
         
         package_preproc(void* _userdata = nullptr):
             userdata_(_userdata),
@@ -210,7 +210,7 @@ namespace stream {
                 return 0;
             }
             
-            if (!checksum_succ_cb_(
+            if (checksum_succ_cb_(
                 memepp::buffer_view{ _buf.data(), mmint_t(calc_len) }, userdata_))
             {
                 *_offset = calc_len;
@@ -273,7 +273,7 @@ namespace stream {
                 auto diff = mmint_t(calc_len) - recv_curr_cache_.size();
                 recv_curr_cache_.append(_buf.data(), diff);
 
-                if (!checksum_succ_cb_(
+                if (checksum_succ_cb_(
                     memepp::buffer_view{ recv_curr_cache_.data(), mmint_t(calc_len) }, userdata_))
                 {
                     *_offset = diff;
