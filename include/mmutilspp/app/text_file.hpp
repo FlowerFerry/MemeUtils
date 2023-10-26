@@ -88,7 +88,7 @@ namespace mmupp::app {
         ghc::filesystem::path path_;
         bool utf8_bom_;
         bool auto_create_;
-        int  max_file_size_;
+        mmint_t max_file_size_;
     };
     
     template<typename _Object>
@@ -103,6 +103,8 @@ namespace mmupp::app {
         {
             if (auto_create_) {
                 auto obj = hdr.default_object();
+                if (!obj)
+                    return mgpp::err{ MGEC__ERR };
                 
                 auto res = hdr.serializer(obj);
                 if (!res)
@@ -125,6 +127,8 @@ namespace mmupp::app {
 
             if (auto_create_) {
                 auto obj = hdr.default_object();
+                if (!obj)
+                    return mgpp::err{ MGEC__ERR };
 
                 auto res = hdr.serializer(obj);
                 if (!res)
@@ -152,11 +156,10 @@ namespace mmupp::app {
             char bom[3] = { 0 };
             ifs.read(bom, 3);
 
-            if (bom[0] != '\xEF' || bom[1] != '\xBB' || bom[2] != '\xBF')
+            if (bom[0] != 0xEF || bom[1] != 0xBB || bom[2] != 0xBF)
             {
                 ifs.seekg(0, std::ios::beg);
             }
-            
         }
 
         memepp::string str = mm_from(
