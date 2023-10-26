@@ -9,6 +9,7 @@
 #   include <fcntl.h>
 #endif
 
+#include "text_file_handler.hpp"
 #include <megopp/util/scope_cleanup.h>
 #include <megopp/err/err.hpp>
 #include <memepp/string.hpp>
@@ -25,23 +26,23 @@ namespace mmupp::app {
     template<typename _Object>
     class txtfile_handler
     {
-        using object_t = _Object;
-        using object_ptr_t = std::shared_ptr<object_t>;
+        //using object_t = _Object;
+        //using object_ptr_t = std::shared_ptr<object_t>;
 
-        inline object_ptr_t default_object()
-        {
-            return std::make_shared<object_t>();
-        }
+        //inline object_ptr_t default_object()
+        //{
+        //    return std::make_shared<object_t>();
+        //}
 
-        inline outcome::checked<object_ptr_t, mgpp::err> deserializer(const memepp::string& _str)
-        {
-            return outcome::failure(mgpp::err{ MGEC__ERR });
-        }
+        //inline outcome::checked<object_ptr_t, mgpp::err> deserialize(const std::string& _str)
+        //{
+        //    return outcome::failure(mgpp::err{ MGEC__ERR });
+        //}
 
-        inline outcome::checked<memepp::string, mgpp::err> serializer(const object_t& _obj)
-        {
-            return outcome::failure(mgpp::err{ MGEC__ERR });
-        }
+        //inline outcome::checked<std::string, mgpp::err> serialize(const object_t& _obj)
+        //{
+        //    return outcome::failure(mgpp::err{ MGEC__ERR });
+        //}
     };
 
     template<typename _Object>
@@ -75,6 +76,11 @@ namespace mmupp::app {
             auto_create_ = _flag;
         }
 
+        inline void set_max_file_size(mmint_t _size)
+        {
+            max_file_size_ = _size;
+        }
+
         inline outcome::checked<object_ptr_t, mgpp::err> load();
         inline mgpp::err save(const object_t& _obj);
 
@@ -106,7 +112,7 @@ namespace mmupp::app {
                 if (!obj)
                     return mgpp::err{ MGEC__ERR };
                 
-                auto res = hdr.serializer(obj);
+                auto res = hdr.serialize(obj);
                 if (!res)
                     return res.error();
 
@@ -130,7 +136,7 @@ namespace mmupp::app {
                 if (!obj)
                     return mgpp::err{ MGEC__ERR };
 
-                auto res = hdr.serializer(obj);
+                auto res = hdr.serialize(obj);
                 if (!res)
                     return res.error();
 
@@ -161,11 +167,9 @@ namespace mmupp::app {
                 ifs.seekg(0, std::ios::beg);
             }
         }
-
-        memepp::string str = mm_from(
-            std::string{ std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>() });
         
-        return hdr.deserializer(str);
+        return hdr.deserialize(
+            std::string{ std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>() });
     }
     
     template<typename _Object>
@@ -177,7 +181,7 @@ namespace mmupp::app {
             return mgpp::err{ MGEC__ERR };
         }
 
-        auto res = txtfile_handler<_Object>{}.serializer(_obj);
+        auto res = txtfile_handler<_Object>{}.serialize(_obj);
         if (!res) {
             return res.error();
         }
