@@ -53,7 +53,7 @@ namespace mmupp::app {
         
         txtfile():
             utf8_bom_(true),
-            not_exist_auto_create_(true),
+            auto_create_(true),
             max_file_size_(10 * 1024 * 1024)
         {}
         
@@ -70,6 +70,11 @@ namespace mmupp::app {
             utf8_bom_ = _check;
         }
 
+        inline void set_auto_create_flag(bool _flag)
+        {
+            auto_create_ = _flag;
+        }
+
         inline outcome::checked<object_ptr_t, mgpp::err> load();
         inline mgpp::err save(const object_t& _obj);
 
@@ -82,7 +87,7 @@ namespace mmupp::app {
     protected:
         ghc::filesystem::path path_;
         bool utf8_bom_;
-        bool not_exist_auto_create_;
+        bool auto_create_;
         int  max_file_size_;
     };
     
@@ -96,7 +101,7 @@ namespace mmupp::app {
         auto hdr = txtfile_handler<_Object>{};
         if (!ghc::filesystem::exists(path_))
         {
-            if (not_exist_auto_create_) {
+            if (auto_create_) {
                 auto obj = hdr.default_object();
                 
                 auto res = hdr.serializer(obj);
@@ -118,7 +123,7 @@ namespace mmupp::app {
         std::ifstream ifs(file_path, std::ios::binary);
         if (!ifs.is_open()) {
 
-            if (not_exist_auto_create_) {
+            if (auto_create_) {
                 auto obj = hdr.default_object();
 
                 auto res = hdr.serializer(obj);
