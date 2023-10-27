@@ -52,15 +52,20 @@ namespace paths {
     inline memepp::string relative_with_program_path(const memepp::string_view& _path)
     {
         auto path = _path.trim_space();
-
-#if MEGO_OS__LINUX__AVAILABLE
+        if (path.empty())
+            return {};
+        
         if (path.starts_with("/"))
             return path.to_string();
-#endif
+
 #if MG_OS__WIN_AVAIL
+        if (path.starts_with("\\"))
+            return path.to_string();
+
         auto pos = path.find(":/", 0, 5);
         if (pos != memepp::string_view::npos)
             return path.to_string();
+        
         pos = path.find(":\\", 0, 5);
         if (pos != memepp::string_view::npos)
             return path.to_string();
