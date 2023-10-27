@@ -2,6 +2,8 @@
 #ifndef MMUPP_PATHS_RELATIVE_EXEC_PATH_HPP_INCLUDED
 #define MMUPP_PATHS_RELATIVE_EXEC_PATH_HPP_INCLUDED
 
+#include <mego/predef/os/linux.h>
+#include <mego/predef/os/windows.h>
 #include <mego/util/get_exec_path.h>
 #include <memepp/string.hpp>
 #include <memepp/variable_buffer.hpp>
@@ -51,10 +53,18 @@ namespace paths {
     {
         auto path = _path.trim_space();
 
-        //if (path.starts_with("/"))
-        //    return path.to_string();
-        //if (path.find(":/") != memepp::string_view::npos)
-        //    return path.to_string();
+#if MEGO_OS__LINUX__AVAILABLE
+        if (path.starts_with("/"))
+            return path.to_string();
+#endif
+#if MG_OS__WIN_AVAIL
+        auto pos = path.find(":/", 0, 5);
+        if (pos != memepp::string_view::npos)
+            return path.to_string();
+        pos = path.find(":\\", 0, 5);
+        if (pos != memepp::string_view::npos)
+            return path.to_string();
+#endif
 
         auto dir = program_directory_path();
         
