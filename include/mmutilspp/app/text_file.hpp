@@ -29,7 +29,7 @@ namespace mmupp::app {
     {
     public:
         using object_t = _Object;
-        using object_ptr_t = std::shared_ptr<object_t>;
+        //using object_ptr_t = std::shared_ptr<object_t>;
         
         txtfile():
             utf8_bom_(true),
@@ -94,7 +94,7 @@ namespace mmupp::app {
                 //    return res.error();
 
                 auto err = save(obj);
-                if (!err)
+                if (err)
                     return outcome::failure(err);
                 
                 return obj;
@@ -116,7 +116,7 @@ namespace mmupp::app {
                 //    return res.error();
 
                 auto err = save(obj);
-                if (!err)
+                if (err)
                     return outcome::failure(err);
 
                 return obj;
@@ -137,7 +137,7 @@ namespace mmupp::app {
             char bom[3] = { 0 };
             ifs.read(bom, 3);
 
-            if (bom[0] != 0xEF || bom[1] != 0xBB || bom[2] != 0xBF)
+            if (bom[0] != char(0xEF) || bom[1] != char(0xBB) || bom[2] != char(0xBF))
             {
                 ifs.seekg(0, std::ios::beg);
             }
