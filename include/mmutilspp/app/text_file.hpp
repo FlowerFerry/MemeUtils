@@ -22,28 +22,7 @@
 namespace outcome = OUTCOME_V2_NAMESPACE;
 
 namespace mmupp::app {
-
-    template<typename _Object>
-    class txtfile_handler
-    {
-        //using object_t = _Object;
-        //using object_ptr_t = std::shared_ptr<object_t>;
-
-        //inline object_ptr_t default_object()
-        //{
-        //    return std::make_shared<object_t>();
-        //}
-
-        //inline outcome::checked<object_ptr_t, mgpp::err> deserialize(const std::string& _str)
-        //{
-        //    return outcome::failure(mgpp::err{ MGEC__ERR });
-        //}
-
-        //inline outcome::checked<std::string, mgpp::err> serialize(const object_t& _obj)
-        //{
-        //    return outcome::failure(mgpp::err{ MGEC__ERR });
-        //}
-    };
+    
 
     template<typename _Object>
     class txtfile
@@ -81,7 +60,7 @@ namespace mmupp::app {
             max_file_size_ = _size;
         }
 
-        inline outcome::checked<object_ptr_t, mgpp::err> load();
+        inline outcome::checked<object_t, mgpp::err> load();
         inline mgpp::err save(const object_t& _obj);
 
         inline static txtfile& instance()
@@ -98,7 +77,7 @@ namespace mmupp::app {
     };
     
     template<typename _Object>
-    inline outcome::checked<typename txtfile<_Object>::object_ptr_t, mgpp::err> txtfile<_Object>::load()
+    inline outcome::checked<typename txtfile<_Object>::object_t, mgpp::err> txtfile<_Object>::load()
     {
         if (path_.empty()) {
             return outcome::failure(mgpp::err{ MGEC__ERR });
@@ -109,14 +88,12 @@ namespace mmupp::app {
         {
             if (auto_create_) {
                 auto obj = hdr.default_object();
-                if (!obj)
-                    return mgpp::err{ MGEC__ERR };
                 
-                auto res = hdr.serialize(obj);
-                if (!res)
-                    return res.error();
+                //auto res = hdr.serialize(obj);
+                //if (!res)
+                //    return res.error();
 
-                auto err = save(res.value());
+                auto err = save(obj);
                 if (!err)
                     return outcome::failure(err);
                 
@@ -133,14 +110,12 @@ namespace mmupp::app {
 
             if (auto_create_) {
                 auto obj = hdr.default_object();
-                if (!obj)
-                    return mgpp::err{ MGEC__ERR };
 
-                auto res = hdr.serialize(obj);
-                if (!res)
-                    return res.error();
+                //auto res = hdr.serialize(obj);
+                //if (!res)
+                //    return res.error();
 
-                auto err = save(res.value());
+                auto err = save(obj);
                 if (!err)
                     return outcome::failure(err);
 
@@ -187,7 +162,7 @@ namespace mmupp::app {
         }
 
         if (utf8_bom_) {
-            char bom[] = { 0xEF, 0xBB, 0xBF, '\0' };
+            char bom[] = { char(0xEF), char(0xBB), char(0xBF), '\0'};
             ofs.write(bom, strlen(bom));
         }
 

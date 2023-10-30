@@ -62,11 +62,11 @@ namespace paths {
         if (path.starts_with("\\"))
             return path.to_string();
 
-        auto pos = path.find(":/", 0, 5);
+        auto pos = path.find(":/");
         if (pos != memepp::string_view::npos)
             return path.to_string();
         
-        pos = path.find(":\\", 0, 5);
+        pos = path.find(":\\");
         if (pos != memepp::string_view::npos)
             return path.to_string();
 #endif
