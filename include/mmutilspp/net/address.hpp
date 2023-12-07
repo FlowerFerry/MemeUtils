@@ -19,10 +19,11 @@ namespace net {
 
     enum class address_type: uint8_t
     {
-        none   = 0x00,
-        ipv4   = 0x01,
-        ipv6   = 0x02,
-        domain = 0x04
+        none           = 0x00,
+        ipv4           = 0x01,
+        ipv6           = 0x02,
+        ipv6_with_ipv4 = 0x03,
+        domain         = 0x04
     };
 
     struct address 
@@ -37,7 +38,7 @@ namespace net {
         address(string_type _data):
             data_(_data.trim_space())
         {
-            type_ = identify_type(data_);
+            identify_and_set_type(data_);
         }
 
         address(const address& _other):
@@ -76,7 +77,7 @@ namespace net {
 
         inline constexpr bool is_ip_format() const noexcept
         {
-            return type_ == address_type::ipv4 || type_ == address_type::ipv6;
+            return !!(static_cast<uint8_t>(type_) & static_cast<uint8_t>(address_type::ipv6_with_ipv4));
         }
 
         inline constexpr bool is_domain_format() const noexcept
@@ -105,30 +106,34 @@ namespace net {
 
         inline void set_data(string_type _data)
         {
-            data_ = _data.trim_space();
-            type_ = identify_type(data_);
+            data_ = _data.trim_space(); 
+            identify_and_set_type(data_);
         }
 
-        inline static address_type identify_type(const string_type& _data) noexcept
+    private:
+        inline void identify_and_set_type(const string_type& _data) noexcept
         {
             unsigned char buf[sizeof(struct in6_addr)] = { 0 };
             if (inet_pton(AF_INET, _data.data(), buf) == 1)
             {
-                return address_type::ipv4;
+                type_ = address_type::ipv4;
             }
             else if (inet_pton(AF_INET6, _data.data(), buf) == 1)
             {
-                return address_type::ipv6;
+                if (_data.starts_with("::ffff:") || _data.starts_with("::FFFF:"))
+                    type_ = address_type::ipv6_with_ipv4;
+                else
+                    type_ = address_type::ipv6;
             }
             else {
-                return address_type::domain;
+                type_ = address_type::domain;
             }
         }
 
-    private:
 
         string_type  data_;
         address_type type_;
+        
     };
 
 }
