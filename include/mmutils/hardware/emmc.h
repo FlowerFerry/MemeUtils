@@ -174,6 +174,7 @@ static int mmu_get_emmc_info(const char* _device_name, size_t _slen, struct mmu_
         }
     }
 
+#endif
     return 0;
 }
 
