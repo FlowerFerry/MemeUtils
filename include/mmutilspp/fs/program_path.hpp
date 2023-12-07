@@ -1,6 +1,6 @@
 
-#ifndef MMUPP_PATHS_RELATIVE_EXEC_PATH_HPP_INCLUDED
-#define MMUPP_PATHS_RELATIVE_EXEC_PATH_HPP_INCLUDED
+#ifndef MMUPP_FS_RELATIVE_EXEC_PATH_HPP_INCLUDED
+#define MMUPP_FS_RELATIVE_EXEC_PATH_HPP_INCLUDED
 
 #include <mego/predef/os/linux.h>
 #include <mego/predef/os/windows.h>
@@ -9,7 +9,7 @@
 #include <memepp/variable_buffer.hpp>
 
 namespace mmupp {
-namespace paths {
+namespace fs {
 
     inline memepp::string program_directory_path()
     {
@@ -81,8 +81,8 @@ namespace paths {
         vb.release(s);
         return s;
     }
-} // namespace path
+} // namespace fs
 } // namespace mmupp
 
 
-#endif // MMUPP_PATHS_RELATIVE_EXEC_PATH_HPP_INCLUDED
+#endif // MMUPP_FS_RELATIVE_EXEC_PATH_HPP_INCLUDED
