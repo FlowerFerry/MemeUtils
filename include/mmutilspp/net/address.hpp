@@ -2,9 +2,11 @@
 #ifndef MMUPP_NET_ADDRESS_HPP_INCLUDED
 #define MMUPP_NET_ADDRESS_HPP_INCLUDED
 
-#include <memepp/string.hpp>
 #include <mego/predef/os/linux.h>
 #include <mego/predef/os/windows.h>
+
+#include <memepp/string.hpp>
+#include <megopp/util/scope_cleanup.h>
 
 #if MG_OS__WIN_AVAIL
 #include <ws2tcpip.h>
@@ -118,6 +120,53 @@ namespace net {
             data_.split(".", memepp::split_behavior_t::keep_empty_parts, _out);
         }
 
+        //inline bool block_compare(const address& _other) const noexcept
+        //{
+        //    switch (type()) {
+        //    case address_type::ipv6_with_ipv4:
+        //    {
+        //        if (_other.type() == address_type::ipv4)
+        //            return data_.contains(_other.data_);
+        //    } break;
+        //    case address_type::ipv4:
+        //    {
+        //        if (_other.type() == address_type::ipv6_with_ipv4)
+        //            return _other.data_.contains(data_);
+        //    } break;
+        //    default:
+        //        break;
+        //    }
+        //    
+        //    addrinfo hints;
+        //    memset(&hints, 0, sizeof(hints));
+        //    hints.ai_family   = PF_UNSPEC;
+        //    hints.ai_socktype = SOCK_STREAM;
+
+        //    addrinfo* lhs_ai = nullptr;
+        //    if (type() == address_type::domain)
+        //    {
+        //        if (getaddrinfo(data_.c_str(), nullptr, &hints, &lhs_ai) != 0)
+        //            return false;
+        //    }
+        //    MEGOPP_UTIL__ON_SCOPE_CLEANUP([lhs_ai] { if (lhs_ai) freeaddrinfo(lhs_ai); });
+        //    
+        //    memset(&hints, 0, sizeof(hints));
+        //    hints.ai_family = PF_UNSPEC;
+        //    hints.ai_socktype = SOCK_STREAM;
+
+        //    addrinfo* rhs_ai = nullptr;
+        //    if (_other.type() == address_type::domain)
+        //    {
+        //        if (getaddrinfo(_other.data_.c_str(), nullptr, &hints, &rhs_ai) != 0)
+        //            return false;
+        //    }
+        //    MEGOPP_UTIL__ON_SCOPE_CLEANUP([rhs_ai] { if (rhs_ai) freeaddrinfo(rhs_ai); });
+        //    
+        //    // TO_DO
+        //    
+        //    return data_ == _other.data_;
+        //}
+        
         inline bool operator==(const address& _other) const noexcept
         {
             switch (type()) {
