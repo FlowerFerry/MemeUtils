@@ -85,6 +85,30 @@ namespace net {
             return type_ == address_type::domain;
         }
 
+        inline bool to_sockaddr_storage(uint16_t _port, sockaddr_storage* _out) const noexcept
+        {
+            if (type_ == address_type::ipv4) 
+            {
+                sockaddr_in* addr = reinterpret_cast<sockaddr_in*>(_out);
+                addr->sin_family = AF_INET;
+                addr->sin_port   = htons(_port);
+                if (inet_pton(AF_INET, data_.c_str(), &addr->sin_addr) != 1)
+                    return false;
+                return true;
+            }
+            else if (type_ == address_type::ipv6 || type_ == address_type::ipv6_with_ipv4) 
+            {
+                sockaddr_in6* addr = reinterpret_cast<sockaddr_in6*>(_out);
+                addr->sin6_family = AF_INET6;
+                addr->sin6_port   = htons(_port);
+                if (inet_pton(AF_INET6, data_.c_str(), &addr->sin6_addr) != 1)
+                    return false;
+                return true;
+            }
+
+            return false;
+        }
+
         template<typename _Container>
         inline void split_domain(std::back_insert_iterator<_Container> _out) const
         {
