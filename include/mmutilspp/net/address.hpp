@@ -96,6 +96,21 @@ namespace net {
 
         inline bool operator==(const address& _other) const noexcept
         {
+            switch (type()) {
+            case address_type::ipv6_with_ipv4:
+            {
+                if (_other.type() == address_type::ipv4)
+                    return data_.contains(_other.data_);
+            } break;
+            case address_type::ipv4:
+            {
+                if (_other.type() == address_type::ipv6_with_ipv4)
+                    return _other.data_.contains(data_);
+            } break;
+            default: 
+                break;
+            }
+            
             return data_ == _other.data_;
         }
 
