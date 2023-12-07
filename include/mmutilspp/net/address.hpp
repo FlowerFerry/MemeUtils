@@ -37,16 +37,7 @@ namespace net {
         address(string_type _data):
             data_(_data.trim_space())
         {
-		    unsigned char buf[sizeof(struct in6_addr)] = { 0 };
-            if (inet_pton(AF_INET, data_.data(), buf) == 1) 
-            {
-                type_ = address_type::ipv4;
-            } else if (inet_pton(AF_INET6, data_.data(), buf) == 1) 
-            {
-                type_ = address_type::ipv6;
-            } else {
-                type_ = address_type::domain;
-            }
+            type_ = identify_type(data_);
         }
 
         address(const address& _other):
@@ -115,20 +106,27 @@ namespace net {
         inline void set_data(string_type _data)
         {
             data_ = _data.trim_space();
+            type_ = identify_type(data_);
+        }
 
-		    unsigned char buf[sizeof(struct in6_addr)] = { 0 };
-            if (inet_pton(AF_INET, data_.data(), buf) == 1) 
+        inline static address_type identify_type(const string_type& _data) noexcept
+        {
+            unsigned char buf[sizeof(struct in6_addr)] = { 0 };
+            if (inet_pton(AF_INET, _data.data(), buf) == 1)
             {
-                type_ = address_type::ipv4;
-            } else if (inet_pton(AF_INET6, data_.data(), buf) == 1) 
+                return address_type::ipv4;
+            }
+            else if (inet_pton(AF_INET6, _data.data(), buf) == 1)
             {
-                type_ = address_type::ipv6;
-            } else {
-                type_ = address_type::domain;
+                return address_type::ipv6;
+            }
+            else {
+                return address_type::domain;
             }
         }
 
     private:
+
         string_type  data_;
         address_type type_;
     };
