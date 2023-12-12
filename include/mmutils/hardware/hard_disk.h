@@ -31,15 +31,15 @@ struct mmu_harddisk_freespace
     uint64_t avail;
 };
 
-static mmsstk_t mmu_get_harddisk_path_by_path(const char* _filepath, size_t _len);
+mmsstk_t mmu_get_harddisk_path_by_path(const char* _filepath, size_t _len);
 
-static mmsstk_t mmu_get_harddisk_mountpoint_by_path(const char* _filepath, size_t _len);
+mmsstk_t mmu_get_harddisk_mountpoint_by_path(const char* _filepath, size_t _len);
 
-static int mmu_get_harddisk_freespace_by_path(
+int mmu_get_harddisk_freespace_by_path(
     const char* _filepath, size_t _len, mmu_harddisk_freespace* _freespace);
 
 
-static mmsstk_t mmu_get_harddisk_path_by_path(const char* _filepath, size_t _len)
+inline mmsstk_t mmu_get_harddisk_path_by_path(const char* _filepath, size_t _len)
 {
     mmsstk_t s;
 #if MEGO_OS__LINUX__AVAILABLE
@@ -137,7 +137,7 @@ static mmsstk_t mmu_get_harddisk_path_by_path(const char* _filepath, size_t _len
 #endif // MEGO_OS__Linux__AVAILABLE
 }
 
-mmsstk_t mmu_get_harddisk_mountpoint_by_path(const char* _filepath, size_t _len)
+inline mmsstk_t mmu_get_harddisk_mountpoint_by_path(const char* _filepath, size_t _len)
 {
     mmsstk_t s;
 #if MEGO_OS__LINUX__AVAILABLE
@@ -204,7 +204,7 @@ mmsstk_t mmu_get_harddisk_mountpoint_by_path(const char* _filepath, size_t _len)
 #endif // MEGO_OS__Linux__AVAILABLE
 }
 
-int mmu_get_harddisk_freespace_by_path(
+inline int mmu_get_harddisk_freespace_by_path(
     const char* _filepath, size_t _len, mmu_harddisk_freespace* _freespace)
 {
     mmsstk_t mountpoint = mmu_get_harddisk_mountpoint_by_path(_filepath, _len);
