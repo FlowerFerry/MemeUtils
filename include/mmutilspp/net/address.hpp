@@ -215,6 +215,7 @@ namespace net {
             }
             else {
                 type_ = address_type::domain;
+                
             }
         }
 
