@@ -8,7 +8,7 @@
 #include <mego/err/ec.h>
 #include <mego/err/ec_impl.h>
 #include <mego/predef/os/linux.h>
-#include <mmutils/fs/file.h>
+#include <mego/util/std/file.h>
 
 #if MG_OS__LINUX_AVAIL
 #   include <unistd.h>
@@ -336,7 +336,7 @@ namespace resolv {
 
     inline mgec_t config::into_file(memepp::string_view _path)
     {
-        auto fp = mmu_fopen(_path.data(), _path.size(), "w", 1);
+        auto fp = mgu_fopen(_path.data(), _path.size(), "w", 1);
         if (!fp)
             return mgec__from_posix_err(errno);
         MEGOPP_UTIL__ON_SCOPE_CLEANUP([&] { fclose(fp); });
@@ -448,7 +448,7 @@ namespace resolv {
 
     inline std::tuple<std::unique_ptr<config>, mgec_t> config::from_file(memepp::string_view _path)
     {
-        auto fp = mmu_fopen(_path.data(), _path.size(), "r", 1);
+        auto fp = mgu_fopen(_path.data(), _path.size(), "r", 1);
         if (!fp)
             return std::make_tuple(nullptr, mgec__from_posix_err(errno));
         MEGOPP_UTIL__ON_SCOPE_CLEANUP([&] { fclose(fp); });
