@@ -101,6 +101,8 @@ inline mmsstk_t mmuhw_get_disk_serial_number(const char* _disk_path, size_t _len
     }
 
     MemeStringStack_initByU8bytes(&s, MMSTR__OBJ_SIZE, index_ptr, reply_len);
+#else
+    mmsstk_init(&s, MMSTR__OBJ_SIZE);
 #endif // !MG_OS__LINUX_AVAIL
     return s;
 }
