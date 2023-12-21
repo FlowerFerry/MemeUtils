@@ -20,6 +20,7 @@
 #include <vector>
 #include <memory>
 #include <optional>
+#include <algorithm>
 
 #include <memepp/variable_buffer.hpp>
 #include <memepp/string_view.hpp>
@@ -124,6 +125,9 @@ namespace resolv {
 
     struct config 
     {
+        
+        mgec_t merge(const config& _other);
+
         mgec_t into_file(FILE* _file);
         mgec_t into_file(memepp::string_view _path);
 
@@ -241,6 +245,37 @@ namespace resolv {
         }
 
         return p;
+    }
+
+    inline mgec_t config::merge(const config& _other)
+    {
+        std::map<parameter::e_type, std::vector<parameter*>> src_params;
+        for (auto& p : _other.parameters)
+            src_params[p->type()].push_back(p.get());
+
+        std::vector<parameter*> append_params;
+        auto it = src_params.find(parameter::e_type::nameserver);
+        if (it != src_params.end())
+        {
+            for (auto& p : it->second)
+            {
+                auto& addr = static_cast<nameserver_parameter*>(p)->data;
+                auto it2 = std::find_if(parameters.begin(), parameters.end(), [&](auto& p2) 
+                {
+                    if (p2->type() != parameter::e_type::nameserver)
+                        return false;
+                    auto& addr2 = static_cast<nameserver_parameter*>(p2.get())->data;
+                    return addr == addr2;
+                });
+                if (it2 == parameters.end())
+                    append_params.push_back(p);
+            }
+
+            for (auto& p : append_params)
+                parameters.push_back(std::make_unique<nameserver_parameter>(static_cast<nameserver_parameter&>(*p)));
+        }
+
+        return 0;
     }
 
     inline mgec_t config::into_file(FILE* _file)
