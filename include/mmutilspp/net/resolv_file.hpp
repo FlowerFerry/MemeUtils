@@ -126,7 +126,7 @@ namespace resolv {
     struct config 
     {
         
-        mgec_t merge(const config& _other);
+        mmint_t merge(const config& _other);
 
         mgec_t into_file(FILE* _file);
         mgec_t into_file(memepp::string_view _path);
@@ -246,9 +246,10 @@ namespace resolv {
 
         return p;
     }
-
-    inline mgec_t config::merge(const config& _other)
+    
+    inline mmint_t config::merge(const config& _other)
     {
+        mmint_t result = 0;
         std::map<parameter::e_type, std::vector<parameter*>> src_params;
         for (auto& p : _other.parameters)
             src_params[p->type()].push_back(p.get());
@@ -273,9 +274,12 @@ namespace resolv {
 
             for (auto& p : append_params)
                 parameters.push_back(std::make_unique<nameserver_parameter>(static_cast<nameserver_parameter&>(*p)));
+            
+            if (!append_params.empty())
+                result = 1;
         }
 
-        return 0;
+        return result;
     }
 
     inline mgec_t config::into_file(FILE* _file)
