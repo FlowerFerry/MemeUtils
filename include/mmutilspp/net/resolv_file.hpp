@@ -386,15 +386,15 @@ namespace resolv {
             
             line_view = line_view.trim_space();
 
+            if (line_view.empty()) {
+                cfg->parameters.push_back(std::make_unique<blankline_parameter>(blankline_parameter{}));
+                continue;
+            }
+
             if (line_view.at(0) == '#') {
                 auto p  = std::make_unique<comment_parameter>();
                 p->data = memepp::string{ line };
                 cfg->parameters.push_back(std::move(p));
-                continue;
-            }
-
-            if (line_view.empty()) {
-                cfg->parameters.push_back(std::make_unique<blankline_parameter>(blankline_parameter{}));
                 continue;
             }
 
