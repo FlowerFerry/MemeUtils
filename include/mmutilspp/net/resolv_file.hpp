@@ -8,7 +8,7 @@
 #include <mego/err/ec.h>
 #include <mego/err/ec_impl.h>
 #include <mego/predef/os/linux.h>
-#include <mmutils/fs/file.h>
+#include <mego/util/std/file.h>
 
 #if MG_OS__LINUX_AVAIL
 #   include <unistd.h>
@@ -126,7 +126,7 @@ namespace resolv {
     struct config 
     {
         
-        mgec_t merge(const config& _other);
+        mmint_t merge(const config& _other);
 
         mgec_t into_file(FILE* _file);
         mgec_t into_file(memepp::string_view _path);
@@ -246,9 +246,10 @@ namespace resolv {
 
         return p;
     }
-
-    inline mgec_t config::merge(const config& _other)
+    
+    inline mmint_t config::merge(const config& _other)
     {
+        mmint_t result = 0;
         std::map<parameter::e_type, std::vector<parameter*>> src_params;
         for (auto& p : _other.parameters)
             src_params[p->type()].push_back(p.get());
@@ -273,9 +274,12 @@ namespace resolv {
 
             for (auto& p : append_params)
                 parameters.push_back(std::make_unique<nameserver_parameter>(static_cast<nameserver_parameter&>(*p)));
+            
+            if (!append_params.empty())
+                result = 1;
         }
 
-        return 0;
+        return result;
     }
 
     inline mgec_t config::into_file(FILE* _file)
@@ -336,7 +340,7 @@ namespace resolv {
 
     inline mgec_t config::into_file(memepp::string_view _path)
     {
-        auto fp = mmu_fopen(_path.data(), _path.size(), "w", 1);
+        auto fp = mgu_fopen(_path.data(), _path.size(), "w", 1);
         if (!fp)
             return mgec__from_posix_err(errno);
         MEGOPP_UTIL__ON_SCOPE_CLEANUP([&] { fclose(fp); });
@@ -382,15 +386,15 @@ namespace resolv {
             
             line_view = line_view.trim_space();
 
+            if (line_view.empty()) {
+                cfg->parameters.push_back(std::make_unique<blankline_parameter>(blankline_parameter{}));
+                continue;
+            }
+
             if (line_view.at(0) == '#') {
                 auto p  = std::make_unique<comment_parameter>();
                 p->data = memepp::string{ line };
                 cfg->parameters.push_back(std::move(p));
-                continue;
-            }
-
-            if (line_view.empty()) {
-                cfg->parameters.push_back(std::make_unique<blankline_parameter>(blankline_parameter{}));
                 continue;
             }
 
@@ -448,7 +452,7 @@ namespace resolv {
 
     inline std::tuple<std::unique_ptr<config>, mgec_t> config::from_file(memepp::string_view _path)
     {
-        auto fp = mmu_fopen(_path.data(), _path.size(), "r", 1);
+        auto fp = mgu_fopen(_path.data(), _path.size(), "r", 1);
         if (!fp)
             return std::make_tuple(nullptr, mgec__from_posix_err(errno));
         MEGOPP_UTIL__ON_SCOPE_CLEANUP([&] { fclose(fp); });
