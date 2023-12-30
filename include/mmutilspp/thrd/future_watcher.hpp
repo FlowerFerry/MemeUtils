@@ -57,7 +57,7 @@ struct shared_status
 
 private:
 
-    std::mutex mtx_;
+    mutable std::mutex mtx_;
     bool should_cancel_ = false;
     int minimum_progress_ = 0;
     int maximum_progress_ = 0;
