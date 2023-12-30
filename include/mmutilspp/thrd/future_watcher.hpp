@@ -11,7 +11,7 @@ namespace mmupp { namespace thrd {
 
 struct shared_status
 {
-    friend struct future_watcher;
+    friend struct shared_future_watcher;
 
     double progress_percent() const
     {
@@ -69,7 +69,7 @@ template <typename T>
 struct shared_future_watcher
 {
 public:
-    future_watcher() 
+    shared_future_watcher() 
         : status_(std::make_shared<shared_status>())
     {}
 
