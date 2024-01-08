@@ -13,18 +13,18 @@ namespace olib {
     {
         if (_slen < 0) 
             _slen = strlen(_key);
-        yyjson_val *_v = yyjson_obj_getn(_val, _key, static_cast<size_t>(_slen));
-        if (_v == nullptr) 
+        yyjson_val *v = yyjson_obj_getn(_val, _key, static_cast<size_t>(_slen));
+        if (v == nullptr) 
             return _default;
             
-        switch (yyjson_get_type(_v)) 
+        switch (yyjson_get_type(v)) 
         {
         case YYJSON_TYPE_BOOL: 
-            return yyjson_get_bool(_v) ? 1 : 0;
+            return yyjson_get_bool(v) ? 1 : 0;
         case YYJSON_TYPE_NUM: 
-            return static_cast<T>(yyjson_get_num(_v));
+            return static_cast<T>(yyjson_get_num(v));
         case YYJSON_TYPE_STR: 
-            return static_cast<T>(std::stod(yyjson_get_str(_v)));
+            return static_cast<T>(std::stod(yyjson_get_str(v)));
         default: 
             return _default;
         }
