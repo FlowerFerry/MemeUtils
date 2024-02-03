@@ -2,6 +2,7 @@
 #ifndef MMUPP_FS_RELATIVE_EXEC_PATH_HPP_INCLUDED
 #define MMUPP_FS_RELATIVE_EXEC_PATH_HPP_INCLUDED
 
+#include <meme/native.h>
 #include <mego/predef/os/linux.h>
 #include <mego/predef/os/windows.h>
 #include <mego/util/get_exec_path.h>
@@ -74,7 +75,7 @@ namespace fs {
         auto dir = program_directory_path();
         
         memepp::variable_buffer vb{ dir.bytes(), dir.size() };
-        vb.push_back(uint8_t('/'));
+        vb.push_back(uint8_t(MMN_PATH_SEP_CH));
         vb.append(path);
 
         memepp::string s;
