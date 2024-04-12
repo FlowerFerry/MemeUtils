@@ -38,7 +38,8 @@ namespace net {
         {}
         
         address(string_type _data):
-            data_(_data.trim_space())
+            data_(_data.trim_space()),
+            type_(address_type::none)
         {
             identify_and_set_type(data_);
         }
