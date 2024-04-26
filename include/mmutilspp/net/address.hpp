@@ -49,7 +49,7 @@ namespace net {
             type_(_other.type_)
         {}
 
-        address(address&& _other):
+        address(address&& _other) noexcept:
             data_(std::move(_other.data_)),
             type_(std::move(_other.type_))
         {}
@@ -61,7 +61,7 @@ namespace net {
             return *this;
         }
 
-        inline address& operator=(address&& _other)
+        inline address& operator=(address&& _other) noexcept
         {
             data_ = std::move(_other.data_);
             type_ = std::move(_other.type_);
