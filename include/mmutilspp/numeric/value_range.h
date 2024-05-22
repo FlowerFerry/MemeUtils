@@ -4,6 +4,16 @@
 
 #include <limits>
 
+#ifdef min
+#define MAX_ORIGINAL min
+#undef min
+#endif
+
+#ifdef max
+#define MAX_ORIGINAL max
+#undef max
+#endif
+
 namespace mmupp {
 namespace numeric {
 
@@ -92,8 +102,8 @@ public:
     value_range<T> operator+(const value_range<T>& range) const noexcept { return value_range<T>(min() + range.min(), max() + range.max()); }
     value_range<T> operator-(const value_range<T>& range) const noexcept { return value_range<T>(min() - range.min(), max() - range.max()); }
     value_range<T> operator*(const value_range<T>& range) const noexcept { 
-        auto minv = std::min({min() * range.min(), max() * range.min(), min() * range.max(), max() * range.max()});
-        auto maxv = std::max({min() * range.min(), max() * range.min(), min() * range.max(), max() * range.max()});
+        auto minv = (std::min)({min() * range.min(), max() * range.min(), min() * range.max(), max() * range.max()});
+        auto maxv = (std::max)({min() * range.min(), max() * range.min(), min() * range.max(), max() * range.max()});
         return value_range<T>(minv, maxv);
     }
     value_range<T> operator/(const value_range<T>& range) const noexcept { 
@@ -101,8 +111,8 @@ public:
             return value_range<T>(std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
         }
 
-        auto minv = std::min({min() / range.min(), max() / range.min(), min() / range.max(), max() / range.max()});
-        auto maxv = std::max({min() / range.min(), max() / range.min(), min() / range.max(), max() / range.max()});
+        auto minv = (std::min)({min() / range.min(), max() / range.min(), min() / range.max(), max() / range.max()});
+        auto maxv = (std::max)({min() / range.min(), max() / range.min(), min() / range.max(), max() / range.max()});
 
         return value_range<T>(minv, maxv);
     }
@@ -114,5 +124,15 @@ private:
 
 }
 }
+
+#ifdef MAX_ORIGINAL
+#define max MAX_ORIGINAL
+#undef MAX_ORIGINAL
+#endif
+
+#ifdef MIN_ORIGINAL
+#define min MIN_ORIGINAL
+#undef MIN_ORIGINAL
+#endif
 
 #endif // !MMUPP_NUMERIC_VALUE_RANGE_H_INCLUDED
