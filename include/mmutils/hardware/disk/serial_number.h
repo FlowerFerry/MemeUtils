@@ -2,7 +2,9 @@
 #ifndef MMUHW_DISK_SERIAL_NUMBER_H_INCLUDED
 #define MMUHW_DISK_SERIAL_NUMBER_H_INCLUDED
 
+#include <meme/string.h>
 #include <mego/predef/os/linux.h>
+#include <mego/predef/symbol/inline.h>
 
 #include <stdint.h>
 
@@ -16,19 +18,16 @@
 extern "C" {
 #endif // __cplusplus
 
-mmsstk_t mmuhw_get_disk_serial_number(const char* _disk_path, size_t _len);
-
-
-inline mmsstk_t mmuhw_get_disk_serial_number(const char* _disk_path, size_t _len)
+MG_CAPI_INLINE mmstrstk_t mmuhw_get_disk_serial_number(const char* _disk_path, size_t _len)
 {
-    mmsstk_t s;
+    mmstrstk_t s;
 #if MG_OS__LINUX_AVAIL
     int reply_len = 0;
     uint8_t* reply_ptr = NULL;
     uint8_t* index_ptr = NULL;
     int fd = open(_disk_path, O_RDONLY);
     if (fd < 0) {
-        mmsstk_init(&s, MMSTR__OBJ_SIZE);
+        mmstrstk_init(&s, MMSTR__OBJ_SIZE);
         return s; 
     }
 
@@ -54,13 +53,13 @@ inline mmsstk_t mmuhw_get_disk_serial_number(const char* _disk_path, size_t _len
     close(fd);
 
     if (result < 0) {
-        mmsstk_init(&s, MMSTR__OBJ_SIZE);
+        mmstrstk_init(&s, MMSTR__OBJ_SIZE);
         return s; 
     }
 
     if ((io_hdr.info & SG_INFO_OK_MASK) != SG_INFO_OK) 
     {
-        mmsstk_init(&s, MMSTR__OBJ_SIZE);
+        mmstrstk_init(&s, MMSTR__OBJ_SIZE);
         return s; 
     }
 
@@ -102,7 +101,7 @@ inline mmsstk_t mmuhw_get_disk_serial_number(const char* _disk_path, size_t _len
 
     MemeStringStack_initByU8bytes(&s, MMSTR__OBJ_SIZE, index_ptr, reply_len);
 #else
-    mmsstk_init(&s, MMSTR__OBJ_SIZE);
+    mmstrstk_init(&s, MMSTR__OBJ_SIZE);
 #endif // !MG_OS__LINUX_AVAIL
     return s;
 }

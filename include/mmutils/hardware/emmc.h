@@ -5,6 +5,7 @@
 #include <meme/string.h>
 #include <mego/predef/os/linux.h>
 #include <mego/predef/os/windows.h>
+#include <mego/predef/symbol/inline.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,47 +14,41 @@ extern "C" {
 struct mmu_emmc_info
 {
     uint32_t st_size;
-    mmsstk_t cid;
-    mmsstk_t csd;
-    mmsstk_t oemid;
-    mmsstk_t name;
-    mmsstk_t serial;
-    mmsstk_t manfid;
-    mmsstk_t date;
+    mmstrstk_t cid;
+    mmstrstk_t csd;
+    mmstrstk_t oemid;
+    mmstrstk_t name;
+    mmstrstk_t serial;
+    mmstrstk_t manfid;
+    mmstrstk_t date;
 
     //! "MMC", "SD", "SDIO"
-    mmsstk_t type; 
+    mmstrstk_t type; 
 };
 
-static void mmu_emmc_info_init   (struct mmu_emmc_info* _info);
-static void mmu_emmc_info_uninit (struct mmu_emmc_info* _info);
-
-static int mmu_get_emmc_info_list(struct mmu_emmc_info* _info, size_t* _size);
-
-
-static void mmu_emmc_info_init(struct mmu_emmc_info* _info)
+MG_CAPI_INLINE void mmu_emmc_info_init(struct mmu_emmc_info* _info)
 {
-    mmsstk_init(&_info->cid);
-    mmsstk_init(&_info->csd);
-    mmsstk_init(&_info->oemid);
-    mmsstk_init(&_info->name);
-    mmsstk_init(&_info->serial);
-    mmsstk_init(&_info->manfid);
-    mmsstk_init(&_info->date);
+    mmstrstk_init(&_info->cid);
+    mmstrstk_init(&_info->csd);
+    mmstrstk_init(&_info->oemid);
+    mmstrstk_init(&_info->name);
+    mmstrstk_init(&_info->serial);
+    mmstrstk_init(&_info->manfid);
+    mmstrstk_init(&_info->date);
 }
 
-static void mmu_emmc_info_uninit(struct mmu_emmc_info* _info)
+MG_CAPI_INLINE void mmu_emmc_info_uninit(struct mmu_emmc_info* _info)
 {
-    mmsstk_uninit(&_info->cid);
-    mmsstk_uninit(&_info->csd);
-    mmsstk_uninit(&_info->oemid);
-    mmsstk_uninit(&_info->name);
-    mmsstk_uninit(&_info->serial);
-    mmsstk_uninit(&_info->manfid);
-    mmsstk_uninit(&_info->date);
+    mmstrstk_uninit(&_info->cid);
+    mmstrstk_uninit(&_info->csd);
+    mmstrstk_uninit(&_info->oemid);
+    mmstrstk_uninit(&_info->name);
+    mmstrstk_uninit(&_info->serial);
+    mmstrstk_uninit(&_info->manfid);
+    mmstrstk_uninit(&_info->date);
 }
 
-static int mmu_get_emmc_info(const char* _device_name, size_t _slen, struct mmu_emmc_info* _info)
+MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, struct mmu_emmc_info* _info)
 {
 #if MEGO_OS__LINUX__AVAILABLE
     char name[128] = { 0 };
@@ -80,7 +75,7 @@ static int mmu_get_emmc_info(const char* _device_name, size_t _slen, struct mmu_
         buf[len - 1] = '\0';
     }
     
-    mmsstk_assign(&_info->cid, buf, len);
+    mmstrstk_assign(&_info->cid, buf, len);
 
     
     snprintf(path, sizeof(path), "/sys/block/%s/device/csd", name);
@@ -92,7 +87,7 @@ static int mmu_get_emmc_info(const char* _device_name, size_t _slen, struct mmu_
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
-            mmsstk_assign(&_info->csd, buf, len);
+            mmstrstk_assign(&_info->csd, buf, len);
         }
     }
     
@@ -105,7 +100,7 @@ static int mmu_get_emmc_info(const char* _device_name, size_t _slen, struct mmu_
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
-            mmsstk_assign(&_info->oemid, buf, len);
+            mmstrstk_assign(&_info->oemid, buf, len);
         }
     }
 
@@ -118,7 +113,7 @@ static int mmu_get_emmc_info(const char* _device_name, size_t _slen, struct mmu_
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
-            mmsstk_assign(&_info->name, buf, len);
+            mmstrstk_assign(&_info->name, buf, len);
         }
     }
 
@@ -131,7 +126,7 @@ static int mmu_get_emmc_info(const char* _device_name, size_t _slen, struct mmu_
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
-            mmsstk_assign(&_info->serial, buf, len);
+            mmstrstk_assign(&_info->serial, buf, len);
         }
     }
 
@@ -144,7 +139,7 @@ static int mmu_get_emmc_info(const char* _device_name, size_t _slen, struct mmu_
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
-            mmsstk_assign(&_info->manfid, buf, len);
+            mmstrstk_assign(&_info->manfid, buf, len);
         }
     }
 
@@ -157,7 +152,7 @@ static int mmu_get_emmc_info(const char* _device_name, size_t _slen, struct mmu_
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
-            mmsstk_assign(&_info->date, buf, len);
+            mmstrstk_assign(&_info->date, buf, len);
         }
     }
 
@@ -170,7 +165,7 @@ static int mmu_get_emmc_info(const char* _device_name, size_t _slen, struct mmu_
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
-            mmsstk_assign(&_info->type, buf, len);
+            mmstrstk_assign(&_info->type, buf, len);
         }
     }
 
@@ -178,7 +173,7 @@ static int mmu_get_emmc_info(const char* _device_name, size_t _slen, struct mmu_
     return 0;
 }
 
-static int mmu_get_emmc_info_list(struct mmu_emmc_info* _info, size_t* _size)
+MG_CAPI_INLINE int mmu_get_emmc_info_list(struct mmu_emmc_info* _info, size_t* _size)
 {
 #if MEGO_OS__LINUX__AVAILABLE
     struct mmu_emmc_info* info = _info;
