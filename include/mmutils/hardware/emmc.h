@@ -11,10 +11,15 @@
 extern "C" {
 #endif // __cppplusplus
 
+//! @struct mmu_emmc_info
+//! @brief 用于存储 eMMC 信息的数据结构。
 struct mmu_emmc_info
 {
     uint32_t st_size;
     mmstrstk_t cid;
+
+    //! @var csd
+    //! @brief 卡片特性描述符 (Card-Specific Data)。
     mmstrstk_t csd;
     mmstrstk_t oemid;
     mmstrstk_t name;
@@ -22,8 +27,13 @@ struct mmu_emmc_info
     mmstrstk_t manfid;
     mmstrstk_t date;
 
-    //! "MMC", "SD", "SDIO"
+    //! @var type
+    //! @brief 卡片类型，例如 "MMC", "SD", "SDIO"。
     mmstrstk_t type; 
+
+    //! @var removable
+    //! @brief 是否是可移动设备，-1 表示未知，0 表示不可移动，1 表示可移动。
+    int8_t removable;
 };
 
 MG_CAPI_INLINE void mmu_emmc_info_init(struct mmu_emmc_info* _info)
@@ -35,6 +45,8 @@ MG_CAPI_INLINE void mmu_emmc_info_init(struct mmu_emmc_info* _info)
     mmstrstk_init(&_info->serial);
     mmstrstk_init(&_info->manfid);
     mmstrstk_init(&_info->date);
+
+    _info->removable = -1;
 }
 
 MG_CAPI_INLINE void mmu_emmc_info_uninit(struct mmu_emmc_info* _info)
@@ -48,6 +60,12 @@ MG_CAPI_INLINE void mmu_emmc_info_uninit(struct mmu_emmc_info* _info)
     mmstrstk_uninit(&_info->date);
 }
 
+//! @brief 获取指定设备的 eMMC 信息。
+//!
+//! @param _device_name 设备名称字符串。
+//! @param _slen 设备名称字符串的长度。
+//! @param _info 指向要填充的 mmu_emmc_info 结构体的指针。
+//! @return 返回操作结果，0 表示成功，非 0 表示失败。
 MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, struct mmu_emmc_info* _info)
 {
 #if MEGO_OS__LINUX__AVAILABLE
@@ -173,6 +191,11 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
     return 0;
 }
 
+//! @brief 获取系统中所有 eMMC 设备的信息列表。
+//!
+//! @param _info 指向 mmu_emmc_info 结构体数组的指针，用于存储获取到的信息。
+//! @param _size 指向大小变量的指针，用于存储数组大小。
+//! @return 返回操作结果，0 表示成功，非 0 表示失败。
 MG_CAPI_INLINE int mmu_get_emmc_info_list(struct mmu_emmc_info* _info, size_t* _size)
 {
 #if MEGO_OS__LINUX__AVAILABLE
