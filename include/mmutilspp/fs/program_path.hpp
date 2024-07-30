@@ -63,13 +63,22 @@ namespace fs {
         if (path.starts_with("\\"))
             return path.to_string();
 
+        bool has_drive_separator = false;
         auto pos = path.find(":/");
         if (pos != memepp::string_view::npos)
-            return path.to_string();
-        
+            has_drive_separator = true;
+    
         pos = path.find(":\\");
         if (pos != memepp::string_view::npos)
+            has_drive_separator = true;
+
+        if (has_drive_separator) {
+            mmbyte_t ch[] = { 0xE2, 0x80, 0xAA, 0x00 };
+            if (path.starts_with(ch, 3))
+                path = path.substr(3);
             return path.to_string();
+        }
+        
 #endif
 
         auto dir = program_directory_path();
