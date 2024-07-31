@@ -77,7 +77,8 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
     FILE* fp = NULL;
     
     strncpy (name, _device_name, MGU_MATH__MIN(_slen, sizeof(name) - 1));
-
+    name[sizeof(name) - 1] = '\0';
+    
     snprintf(path, sizeof(path), "/sys/block/%s/device/cid", name);
     fp = fopen(path, "r");
     if (fp == NULL) {

@@ -35,6 +35,8 @@ static inline int mmu_pmtx__init(mmu_pmtx_t *_mtx, const char *_name, size_t _na
     {
         return -1;
     }
+    full_name[sizeof(full_name) - 1] = '\0';
+
     _mtx->handle = CreateMutexA(NULL, FALSE, full_name);
     if (_mtx->handle == NULL) {
         return -1;
