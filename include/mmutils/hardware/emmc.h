@@ -6,6 +6,7 @@
 #include <mego/predef/os/linux.h>
 #include <mego/predef/os/windows.h>
 #include <mego/predef/symbol/inline.h>
+#include <mego/util/math.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,13 +70,14 @@ MG_CAPI_INLINE void mmu_emmc_info_uninit(struct mmu_emmc_info* _info)
 MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, struct mmu_emmc_info* _info)
 {
 #if MEGO_OS__LINUX__AVAILABLE
-    char name[128] = { 0 };
+    char name[128];
     char path[PATH_MAX];
     char buf[512];
     size_t len = 0;
     FILE* fp = NULL;
     
-    strncpy (name, _device_name, _slen);
+    strncpy (name, _device_name, MGU_MATH__MIN(_slen, sizeof(name) - 1));
+
     snprintf(path, sizeof(path), "/sys/block/%s/device/cid", name);
     fp = fopen(path, "r");
     if (fp == NULL) {

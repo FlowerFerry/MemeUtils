@@ -3,6 +3,7 @@
 #define MMU_SYNC_OS_WINDOWS_PROCESS_MUTEX_H_INCLUDED
 
 #include <mego/util/os/windows/windows_simplify.h>
+#include <mego/util/math.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,7 +31,8 @@ static inline int mmu_pmtx__init(mmu_pmtx_t *_mtx, const char *_name, size_t _na
     if (_name_len > MAX_PATH - 8) {
         return -1;
     }
-    if (strncpy(full_name, _name, _name_len) == NULL) {
+    if (strncpy(full_name, _name, MGU_MATH__MIN(_name_len, sizeof(full_name) - 1)) == NULL) 
+    {
         return -1;
     }
     _mtx->handle = CreateMutexA(NULL, FALSE, full_name);
