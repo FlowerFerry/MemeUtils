@@ -13,6 +13,7 @@
 #endif
 
 #include <memepp/string.hpp>
+#include <memepp/string_view.hpp>
 #include <memepp/native.hpp>
 #include <memepp/variable_buffer.hpp>
 #include <memepp/convert/std/string.hpp>
@@ -77,10 +78,10 @@ inline memepp::string rec_writable_dir_path()
         return memepp::string{ exec_path, dir_pos };
     
     memepp::variable_buffer buffer;
-    buffer.append("~/.local/share/", -1);
-    buffer.append(exec_path + dir_pos + 1, -1);
-    buffer.append("/", -1);
-    buffer.append(exec_path, -1);
+    buffer.append(memepp::string_view{ "~/.local/share/" });
+    buffer.append(memepp::string_view{ exec_path + dir_pos + 1 });
+    buffer.append(memepp::string_view{ "/" });
+    buffer.append(memepp::string_view{ exec_path });
 
     memepp::string str;
     buffer.release(str);
