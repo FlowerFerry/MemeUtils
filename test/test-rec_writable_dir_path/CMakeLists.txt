@@ -26,9 +26,8 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 get_filename_component(PARENT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../include ABSOLUTE)
 message(STATUS "PARENT_INCLUDE_DIR: ${PARENT_INCLUDE_DIR}")
 
-include_directories(${PARENT_INCLUDE_DIR})
-
 target_include_directories(${PROJECT_NAME} PRIVATE
+  ${PARENT_INCLUDE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/deps/MemeString/include
 )
 
