@@ -77,10 +77,10 @@ inline memepp::string rec_writable_dir_path()
         return memepp::string{ exec_path, dir_pos };
     
     memepp::variable_buffer buffer;
-    buffer.append("~/.local/share/");
-    buffer.append(exec_path + dir_pos + 1);
-    buffer.append("/");
-    buffer.append(exec_path);
+    buffer.append("~/.local/share/", -1);
+    buffer.append(exec_path + dir_pos + 1, -1);
+    buffer.append("/", -1);
+    buffer.append(exec_path, -1);
 
     memepp::string str;
     buffer.release(str);
