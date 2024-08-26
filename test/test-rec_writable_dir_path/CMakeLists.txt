@@ -5,11 +5,13 @@ project(test-rec_writable_dir_path)
 
 aux_source_directory(. SOURCES)
 
+set(GIT_HOST "github.com" CACHE STRING "Git host")
+
 include(FetchContent)
 
 FetchContent_Declare(
 	MemeString
-	GIT_REPOSITORY https://github.com/FlowerFerry/MemeString.git
+	GIT_REPOSITORY https://${GIT_HOST}/FlowerFerry/MemeString.git
 	GIT_TAG develop
 	SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/MemeString
 )
