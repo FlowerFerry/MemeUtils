@@ -10,24 +10,25 @@ set(GIT_HOST "github.com" CACHE STRING "Git host")
 include(FetchContent)
 
 FetchContent_Declare(
-	MemeString
-	GIT_REPOSITORY https://${GIT_HOST}/FlowerFerry/MemeString.git
-	GIT_TAG develop
-	SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/MemeString
+  MemeString
+  GIT_REPOSITORY https://${GIT_HOST}/FlowerFerry/MemeString.git
+  GIT_TAG develop
+  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/MemeString
 )
 FetchContent_Populate(MemeString)
 
 add_subdirectory(deps/MemeString)
 
-message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
-
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 
+get_filename_component(PARENT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../include ABSOLUTE)
+message(STATUS "PARENT_INCLUDE_DIR: ${PARENT_INCLUDE_DIR}")
+
 target_include_directories(${PROJECT_NAME} PRIVATE
-	${CMAKE_CURRENT_SOURCE_DIR}/../../include
-	${CMAKE_CURRENT_SOURCE_DIR}/deps/MemeString/include
+  ${PARENT_INCLUDE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/deps/MemeString/include
 )
 
 if (MSVC)
@@ -39,8 +40,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 )
 
 add_custom_command(
-	TARGET ${PROJECT_NAME} POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    $<TARGET_FILE:${MEMESTRING_PROJECT_NAME}>
-	$<TARGET_FILE_DIR:${PROJECT_NAME}>
+  TARGET ${PROJECT_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+  $<TARGET_FILE:${MEMESTRING_PROJECT_NAME}>
+  $<TARGET_FILE_DIR:${PROJECT_NAME}>
 )
