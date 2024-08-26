@@ -42,6 +42,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${MEMESTRING_PROJECT_NAME}
 )
 
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    BUILD_WITH_INSTALL_RPATH TRUE
+    INSTALL_RPATH "$ORIGIN")
+
 add_custom_command(
   TARGET ${PROJECT_NAME} POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
