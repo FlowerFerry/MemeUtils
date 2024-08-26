@@ -23,7 +23,8 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 
-get_filename_component(PARENT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../include ABSOLUTE)
+set(PARENT_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../include")
+cmake_path(NORMAL_PATH PARENT_INCLUDE_DIR)
 message(STATUS "PARENT_INCLUDE_DIR: ${PARENT_INCLUDE_DIR}")
 
 target_include_directories(${PROJECT_NAME} PRIVATE
