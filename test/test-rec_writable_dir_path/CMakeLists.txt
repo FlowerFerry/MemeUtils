@@ -1,11 +1,13 @@
 ﻿
 cmake_minimum_required(VERSION 3.20)
 
-project(test-rec_writable_dir_path)
+project(test_rec_writable_dir_path)
 
 aux_source_directory(. SOURCES)
 
 set(GIT_HOST "github.com" CACHE STRING "Git host")
+
+message(STATUS "PROJECT_NAME: ${PROJECT_NAME}")
 
 include(FetchContent)
 
