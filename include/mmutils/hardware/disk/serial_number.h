@@ -27,7 +27,7 @@ MG_CAPI_INLINE mmstrstk_t mmuhw_get_disk_serial_number(const char* _disk_path, s
     uint8_t* index_ptr = NULL;
     int fd = open(_disk_path, O_RDONLY);
     if (fd < 0) {
-        mmstrstk_init(&s, MMSTR__OBJ_SIZE);
+        mmstrstk_init(&s);
         return s; 
     }
 
@@ -53,13 +53,13 @@ MG_CAPI_INLINE mmstrstk_t mmuhw_get_disk_serial_number(const char* _disk_path, s
     close(fd);
 
     if (result < 0) {
-        mmstrstk_init(&s, MMSTR__OBJ_SIZE);
+        mmstrstk_init(&s);
         return s; 
     }
 
     if ((io_hdr.info & SG_INFO_OK_MASK) != SG_INFO_OK) 
     {
-        mmstrstk_init(&s, MMSTR__OBJ_SIZE);
+        mmstrstk_init(&s);
         return s; 
     }
 
@@ -101,7 +101,7 @@ MG_CAPI_INLINE mmstrstk_t mmuhw_get_disk_serial_number(const char* _disk_path, s
 
     MemeStringStack_initByU8bytes(&s, MMSTR__OBJ_SIZE, index_ptr, reply_len);
 #else
-    mmstrstk_init(&s, MMSTR__OBJ_SIZE);
+    mmstrstk_init(&s);
 #endif // !MG_OS__LINUX_AVAIL
     return s;
 }

@@ -96,7 +96,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
         buf[len - 1] = '\0';
     }
     
-    mmstrstk_assign(&_info->cid, buf, len);
+    mmstrstk_assign_by_utf8(&_info->cid, buf, len);
 
     
     snprintf(path, sizeof(path), "/sys/block/%s/device/csd", name);
@@ -108,7 +108,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
-            mmstrstk_assign(&_info->csd, buf, len);
+            mmstrstk_assign_by_utf8(&_info->csd, buf, len);
         }
     }
     
@@ -121,7 +121,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
-            mmstrstk_assign(&_info->oemid, buf, len);
+            mmstrstk_assign_by_utf8(&_info->oemid, buf, len);
         }
     }
 
@@ -134,7 +134,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
-            mmstrstk_assign(&_info->name, buf, len);
+            mmstrstk_assign_by_utf8(&_info->name, buf, len);
         }
     }
 
@@ -147,7 +147,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
-            mmstrstk_assign(&_info->serial, buf, len);
+            mmstrstk_assign_by_utf8(&_info->serial, buf, len);
         }
     }
 
@@ -160,7 +160,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
-            mmstrstk_assign(&_info->manfid, buf, len);
+            mmstrstk_assign_by_utf8(&_info->manfid, buf, len);
         }
     }
 
@@ -173,7 +173,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
-            mmstrstk_assign(&_info->date, buf, len);
+            mmstrstk_assign_by_utf8(&_info->date, buf, len);
         }
     }
 
@@ -186,7 +186,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
-            mmstrstk_assign(&_info->type, buf, len);
+            mmstrstk_assign_by_utf8(&_info->type, buf, len);
         }
     }
 
