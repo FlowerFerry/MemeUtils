@@ -19,6 +19,7 @@
 #include <thread>
 #include <future>
 #include <atomic>
+#include <memory>
 #include <functional>
 
 #if MG_OS__WIN_AVAIL
@@ -85,7 +86,34 @@ private:
 
 struct service
 {
+    struct pending_progress;
     using executor_t = std::function<mgpp::err()>;
+    using pending_executor_t = std::function<mgpp::err(pending_progress&)>;
+
+    struct pending_progress
+    {
+        int get_rate() const
+        {
+            return rate_;
+        }
+
+        void set_rate(int _rate)
+        {
+            if (_rate > 100)
+                _rate = 100;
+            else if (_rate < 0)
+                _rate = 0;
+            rate_ = _rate;
+        }
+        
+        bool is_done() const
+        {
+            return rate_ >= 100;
+        }
+
+    private:        
+        std::atomic_int rate_ = 0;
+    };
 
     enum class event_level_e : uint32_t
     {
@@ -115,12 +143,12 @@ struct service
         stop_req_fn_ = _fn;
     }
 
-    void on_start_pending(const executor_t& _fn)
+    void on_start_pending(const pending_executor_t& _fn)
     {
         start_pending_fn_ = _fn;
     }
 
-    void on_stop_pending (const executor_t& _fn)
+    void on_stop_pending (const pending_executor_t& _fn)
     {
         stop_pending_fn_ = _fn;
     }
@@ -201,8 +229,8 @@ private:
     executor_t init_fn_;
     executor_t start_req_fn_;
     executor_t stop_req_fn_;
-    executor_t start_pending_fn_;
-    executor_t stop_pending_fn_;
+    pending_executor_t start_pending_fn_;
+    pending_executor_t stop_pending_fn_;
     executor_t loop_fn_;
     executor_t exit_fn_;
     executor_t started_fn_;
@@ -954,18 +982,19 @@ inline mgpp::err service::__on_start_pending()
     locker.unlock();
 
     mgpp::err result;
-    std::atomic_bool pending_done{ false };
+    std::atomic_bool pending_called{ false };
+    auto progress = std::make_shared<pending_progress>();
     std::thread worker{ [&] {
         try {
             if (pending_fn) {
-                result = pending_fn();
+                result = pending_fn(*progress);
             } else {
                 result = {};
             }
         } catch (...) {
             result = { MGEC__ERR, "Exception in service start pending callback" };
         }
-        pending_done = true;
+        pending_called = true;
 
         if (result) {
             // If the pending callback returned an error, we don't call the started callback.
@@ -983,16 +1012,27 @@ inline mgpp::err service::__on_start_pending()
         }
     } };
 
+    DWORD64 start_time = GetTickCount64();
+    int last_progress = 0;
     auto tick = pending_timeout / 10;
     if (tick < 150)
         tick = 150; // Ensure we don't sleep less than 150ms
     else if (tick > 1000)
         tick = 1000; // Ensure we don't sleep more than 1 second
-    while (!pending_done) {
+    while (!pending_called) {
         locker.lock();
         __win_svc_report_status(
             service_status_handle_, SERVICE_START_PENDING, NO_ERROR, pending_timeout, service_status_);
         locker.unlock();
+
+        if (progress->get_rate() != last_progress) {
+            last_progress = progress->get_rate();
+            start_time = GetTickCount64();
+        }
+        else if (GetTickCount64() - start_time > pending_timeout) {
+            result = { MGEC__TIMEDOUT, "Timeout waiting for service start pending" };
+            break;
+        }
 
         Sleep(tick);
     }
@@ -1024,18 +1064,19 @@ inline mgpp::err service::__on_stop_pending()
     locker.unlock();
 
     mgpp::err result;
-    std::atomic_bool pending_done{ false };
+    std::atomic_bool pending_called{ false };
+    auto progress = std::make_shared<pending_progress>();
     std::thread worker{ [&] {
         try {
             if (pending_fn) {
-                result = pending_fn();
+                result = pending_fn(*progress);
             } else {
                 result = {};
             }
         } catch (...) {
             result = { MGEC__ERR, "Exception in service stop pending callback" };
         }
-        pending_done = true;
+        pending_called = true;
     } };
 
     auto tick = pending_timeout / 10;
@@ -1043,11 +1084,23 @@ inline mgpp::err service::__on_stop_pending()
         tick = 150; // Ensure we don't sleep less than 150ms
     else if (tick > 1000)
         tick = 1000; // Ensure we don't sleep more than 1 second
-    while (!pending_done) {
+    
+    DWORD64 start_time = GetTickCount64();
+    int last_progress = 0;
+    while (!pending_called) {
         locker.lock();
         __win_svc_report_status(
             service_status_handle_, SERVICE_STOP_PENDING, NO_ERROR, pending_timeout, service_status_);
         locker.unlock();
+
+        if (progress->get_rate() != last_progress) {
+            last_progress = progress->get_rate();
+            start_time = GetTickCount64();
+        }
+        else if (GetTickCount64() - start_time > pending_timeout) {
+            result = { MGEC__TIMEDOUT, "Timeout waiting for service stop pending" };
+            break;
+        }
 
         Sleep(tick);
     }
