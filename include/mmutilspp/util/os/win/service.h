@@ -309,9 +309,9 @@ inline mgpp::err service_controller::install(const install_options& _opts)
     }
     
     auto schSCManager = OpenSCManagerW(
-        NULL,                        // local computer
-        NULL,                        // servicesActive database 
-        SC_MANAGER_CREATE_SERVICE);  // full access rights
+        NULL,                    // local computer
+        NULL,                    // servicesActive database 
+        SC_MANAGER_ALL_ACCESS);  // full access rights
     if (NULL == schSCManager) {
         return { mgec__from_sys_err(GetLastError()), "OpenSCManager failed" };
     }
