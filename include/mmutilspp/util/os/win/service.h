@@ -11,9 +11,11 @@
 #include <memepp/native.hpp>
 #include <memepp/convert/std/wstring.hpp>
 #include <memepp/convert/self.hpp>
+#include <megopp/memory/atomic_shared_ptr.h>
 #include <megopp/err/err.h>
 #include <megopp/util/scope_cleanup.h>
 #include <mmutilspp/fs/program_path.hpp>
+#include <mmutilspp/log/level.h>
 
 #include <mutex>
 #include <thread>
@@ -84,11 +86,17 @@ private:
 
 };
 
+#define __MMUPP_UTIL_SVC_PRI_LOG(obj, lvl, msg) \
+    if (obj.log_lvl() <= lvl) { \
+        obj.__log(lvl, msg); \
+    }
+
 struct service
 {
     struct pending_progress;
     using executor_t = std::function<mgpp::err()>;
     using pending_executor_t = std::function<mgpp::err(pending_progress&)>;
+    using log_t = std::function<void(mmupp::log::level, const memepp::string_view&)>;
 
     struct pending_progress
     {
@@ -122,10 +130,20 @@ struct service
         warn  = 0x80020001
     };
 
+    mmupp::log::level log_lvl() const
+    {
+        return log_lvl_.load();
+    }
+
     void set_service_name(const memepp::string_view& _name)
     {
         std::unique_lock locker{ mutex_ };
         service_name_ = mm_into<memepp::native_string>(_name);
+    }
+
+    void set_log_level(mmupp::log::level _lvl)
+    {
+        log_lvl_ = _lvl;
     }
 
     void on_init (const executor_t& _fn)
@@ -172,6 +190,14 @@ struct service
         stopped_fn_ = _fn;
     }
 
+    void on_log(const log_t& _fn)
+    {
+        if (_fn)
+            log_fn_ = std::make_shared<log_t>(_fn);
+        else
+            log_fn_ = nullptr;
+    }
+
     mgpp::err run();
 
     mgpp::err report_event(event_level_e _level, const memepp::string_view& _message) const
@@ -212,6 +238,15 @@ private:
     mgpp::err __on_start_pending();
     mgpp::err __on_stop_pending();
 
+    void __log(mmupp::log::level _lvl, const memepp::string_view& _msg) const
+    {
+        auto log_fn = log_fn_.load();
+        if (!log_fn) {
+            return;
+        }
+        (*log_fn)(_lvl, _msg);
+    }
+
 	static VOID  __win_svc_report_status(
         SERVICE_STATUS_HANDLE _handle, 
         DWORD _dwCurrentState, DWORD _dwWin32ExitCode, DWORD _dwWaitHint,
@@ -235,7 +270,7 @@ private:
     executor_t exit_fn_;
     executor_t started_fn_;
     executor_t stopped_fn_;
-
+    mgpp::mem::atomic_shared_ptr<log_t> log_fn_;
 #if MG_OS__WIN_AVAIL
     memepp::native_string service_name_;
 #else
@@ -248,7 +283,7 @@ private:
     std::future<mgpp::err> stop_future_;
     std::thread stop_thread_;
 #endif
-
+    std::atomic<log::level> log_lvl_ = log::level::info;
     std::atomic_bool is_stopping_ = false;
     int start_pending_timeout_ms_ = 30000; // Default timeout for service start pending
     int stop_pending_timeout_ms_  = 30000;  // Default timeout for service stop
@@ -274,9 +309,9 @@ inline mgpp::err service_controller::install(const install_options& _opts)
     }
     
     auto schSCManager = OpenSCManagerW(
-        NULL,                    // local computer
-        NULL,                    // servicesActive database 
-        SC_MANAGER_ALL_ACCESS);  // full access rights
+        NULL,                        // local computer
+        NULL,                        // servicesActive database 
+        SC_MANAGER_CREATE_SERVICE);  // full access rights
     if (NULL == schSCManager) {
         return { mgec__from_sys_err(GetLastError()), "OpenSCManager failed" };
     }
@@ -591,6 +626,13 @@ inline mgpp::err service_controller::stop(const stop_options& _opts, const progr
 inline mgpp::err service::run()
 {
 #if MG_OS__WIN_AVAIL
+    __MMUPP_UTIL_SVC_PRI_LOG(
+        (*this), mmupp::log::level::trace, "service::run called");
+    MEGOPP_UTIL__ON_SCOPE_CLEANUP([&] {
+        __MMUPP_UTIL_SVC_PRI_LOG(
+            (*this), mmupp::log::level::trace, "service::run finished");
+    });
+
     std::unique_lock locker{ mutex_ };
     if (service_name_.empty())
         return { MGEC__INVAL, "Service name is not set" };
@@ -666,10 +708,18 @@ inline mgpp::err service::report_event(
 #if MG_OS__WIN_AVAIL
 inline void service::__on_win_svc_main(DWORD _dwArgc, LPWSTR *_lpszArgv)
 {
+    __MMUPP_UTIL_SVC_PRI_LOG(
+        (*this), mmupp::log::level::trace, "service::__on_win_svc_main called");
+    MEGOPP_UTIL__ON_SCOPE_CLEANUP([&] {
+        __MMUPP_UTIL_SVC_PRI_LOG(
+            (*this), mmupp::log::level::trace, "service::__on_win_svc_main finished");
+    });
+
     std::unique_lock locker{ mutex_ };
     if (service_name_.empty())
     {
-        // TO_DO
+        __log(mmupp::log::level::error, 
+            "In service::__on_win_svc_main, service name is not set");
         return;
     }
     auto service_name = service_name_;
@@ -851,10 +901,20 @@ inline void service::__on_win_svc_main(DWORD _dwArgc, LPWSTR *_lpszArgv)
 inline DWORD service::__on_win_svc_ctrl_handler(
         DWORD _dwCtrl, DWORD _dwEventType, LPVOID _lpEventData)
 {
+    __MMUPP_UTIL_SVC_PRI_LOG(
+        (*this), mmupp::log::level::trace, "service::__on_win_svc_ctrl_handler called");
+    MEGOPP_UTIL__ON_SCOPE_CLEANUP([&] {
+        __MMUPP_UTIL_SVC_PRI_LOG(
+            (*this), mmupp::log::level::trace, "service::__on_win_svc_ctrl_handler finished");
+    });
+
 	switch (_dwCtrl)
 	{
 	case SERVICE_CONTROL_STOP:
 	case SERVICE_CONTROL_SHUTDOWN: {
+        __MMUPP_UTIL_SVC_PRI_LOG(
+            (*this), mmupp::log::level::trace, 
+            "service::__on_win_svc_ctrl_handler: received stop/shutdown request");
 
         std::unique_lock locker{ mutex_ };
         auto service_name = service_name_;
@@ -913,8 +973,8 @@ inline DWORD service::__on_win_svc_ctrl_handler(
 		return NO_ERROR;
 
 	}
-	case SERVICE_CONTROL_INTERROGATE:
-		return NO_ERROR;
+	// case SERVICE_CONTROL_INTERROGATE:
+	// 	return NO_ERROR;
 
 	default:
 		break;
@@ -1056,6 +1116,13 @@ inline mgpp::err service::__on_start_pending()
 #if MG_OS__WIN_AVAIL
 inline mgpp::err service::__on_stop_pending()
 {
+    __MMUPP_UTIL_SVC_PRI_LOG(
+        (*this), mmupp::log::level::trace, "service::__on_stop_pending called");
+    MEGOPP_UTIL__ON_SCOPE_CLEANUP([&] {
+        __MMUPP_UTIL_SVC_PRI_LOG(
+            (*this), mmupp::log::level::trace, "service::__on_stop_pending finished");
+    });
+
     std::unique_lock locker{ mutex_ };
     if (!service_status_handle_)
         return { MGEC__INVAL, "Service status handle is not set" };
@@ -1281,5 +1348,7 @@ inline mgpp::err service_controller::__stop_dependent_services(
 }
 }
 }
+
+#undef __MMUPP_UTIL_SVC_PRI_LOG
 
 #endif // !MMUPP_UTIL_OS_WIN_SERVICE_H_INCLUDED
