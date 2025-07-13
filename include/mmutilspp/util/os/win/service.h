@@ -626,7 +626,7 @@ inline void service::__on_win_svc_main(DWORD _dwArgc, LPWSTR *_lpszArgv)
 
     std::unique_lock locker{ mutex_ };
 	__win_svc_report_status(
-        service_status_handle_, SERVICE_START_PENDING, NO_ERROR, 300000, service_status_);
+        service_status_handle_, SERVICE_START_PENDING, NO_ERROR, 30000, service_status_);
     locker.unlock();
 
 	mgpp::err result;
@@ -775,7 +775,7 @@ inline DWORD service::__on_win_svc_ctrl_handler(
         std::unique_lock locker{ mutex_ };
         auto service_name = service_name_;
 		__win_svc_report_status(
-            service_status_handle_, SERVICE_STOP_PENDING, NO_ERROR, 300000, service_status_);
+            service_status_handle_, SERVICE_STOP_PENDING, NO_ERROR, 30000, service_status_);
         locker.unlock();
 			// Signal the service to stop.
 
@@ -806,10 +806,10 @@ inline DWORD service::__on_win_svc_ctrl_handler(
 			return NO_ERROR;
 		}
 
-        locker.lock();
-		__win_svc_report_status(
-            service_status_handle_, SERVICE_STOPPED, NO_ERROR, 0, service_status_);
-        locker.unlock();
+        // locker.lock();
+		// __win_svc_report_status(
+        //     service_status_handle_, SERVICE_STOPPED, NO_ERROR, 0, service_status_);
+        // locker.unlock();
 
 		return NO_ERROR;
 
