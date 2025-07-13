@@ -22,7 +22,7 @@ namespace fs {
         }
         memepp::variable_buffer vb{ len + 1, 0 };
         len = MegoUtil_GetExecutablePath(
-            reinterpret_cast<char*>(vb.data()), len, &pos);
+            reinterpret_cast<char*>(vb.data()), len + 1, &pos);
         if (len <= 0)
         {
             return {};
@@ -41,7 +41,7 @@ namespace fs {
         }
         memepp::variable_buffer vb{ len + 1, 0 };
         len = MegoUtil_GetExecutablePath(
-            reinterpret_cast<char*>(vb.data()), len, &pos);
+            reinterpret_cast<char*>(vb.data()), len + 1, &pos);
         if (len <= 0)
         {
             return {};
