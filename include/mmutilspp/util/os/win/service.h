@@ -418,13 +418,14 @@ inline mgpp::err service_controller::start(const start_options& _opts, const pro
         _process_rate_cb(progress_rate_e::query_status, 0);
     }
 
+    DWORD bytesNeeded;
 	SERVICE_STATUS_PROCESS serviceStatus;
     if (!QueryServiceStatusEx(
         schService,
         SC_STATUS_PROCESS_INFO,
         (LPBYTE)&serviceStatus,
         sizeof(serviceStatus),
-        NULL))
+        &bytesNeeded))
     {
         return { mgec__from_sys_err(GetLastError()), "QueryServiceStatusEx failed" };
     }
@@ -514,13 +515,14 @@ inline mgpp::err service_controller::stop(const stop_options& _opts, const progr
         _process_rate_cb(progress_rate_e::query_status, 0);
     }
 
+    DWORD bytesNeeded;
     SERVICE_STATUS_PROCESS serviceStatus;
     if (!QueryServiceStatusEx(
         schService,
         SC_STATUS_PROCESS_INFO,
         (LPBYTE)&serviceStatus,
         sizeof(serviceStatus),
-        NULL))
+        &bytesNeeded))
     {
         return { mgec__from_sys_err(GetLastError()), "QueryServiceStatusEx failed" };
     }
@@ -1172,6 +1174,7 @@ inline mgpp::err service_controller::__wait_service_status(
 {
 	DWORD64 dwStartTime = GetTickCount64();
     DWORD dwOldCheckPoint = 0;
+    DWORD bytesNeeded;
     SERVICE_STATUS_PROCESS serviceStatus;
     memset(&serviceStatus, 0, sizeof(serviceStatus));
     while (true) {
@@ -1180,7 +1183,7 @@ inline mgpp::err service_controller::__wait_service_status(
             SC_STATUS_PROCESS_INFO,
             (LPBYTE)&serviceStatus,
             sizeof(serviceStatus),
-            NULL))
+            &bytesNeeded))
         {
             return { mgec__from_sys_err(GetLastError()), "QueryServiceStatusEx failed" };
         }
