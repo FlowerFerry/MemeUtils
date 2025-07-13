@@ -965,10 +965,10 @@ inline DWORD service::__on_win_svc_ctrl_handler(
                 return mgpp::err{ MGEC__ERR, "Exception in stop pending callback" };
             }
         } };
+        stop_future_ = stop_task.get_future();
         stop_thread_ = std::thread([task = std::move(stop_task)]() mutable {
             task();
         });
-        stop_future_ = stop_task.get_future();
 
 		return NO_ERROR;
 
