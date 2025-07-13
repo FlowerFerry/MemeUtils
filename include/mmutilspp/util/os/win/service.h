@@ -316,11 +316,11 @@ inline mgpp::err service_controller::install(const install_options& _opts)
 	SC_ACTION failActions[3];
 
 	failActions[0].Type = SC_ACTION_RESTART; //Failure action: Restart Service
-	failActions[0].Delay = 180000; //number of milliseconds to wait before performing failure action, in milliseconds = 3minutes
+	failActions[0].Delay = 60000; //number of milliseconds to wait before performing failure action, in milliseconds = 1minute
 	failActions[1].Type = SC_ACTION_RESTART;
-	failActions[1].Delay = 180000;
+	failActions[1].Delay = 60000;
 	failActions[2].Type = SC_ACTION_RESTART;
-	failActions[2].Delay = 180000;
+	failActions[2].Delay = 60000;
 
 	servFailActions.dwResetPeriod = 172800; // Reset Failures Counter, in Seconds = 2days
 	servFailActions.lpCommand = NULL; //Command to perform due to service failure, not used
