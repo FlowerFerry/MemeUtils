@@ -16,6 +16,8 @@
 #include <mmutilspp/fs/program_path.hpp>
 
 #include <mutex>
+#include <thread>
+#include <future>
 #include <atomic>
 #include <functional>
 
@@ -29,9 +31,9 @@ namespace util {
 namespace os {
 namespace win {
 
-struct service
+struct service_controller
 {
-    enum class process_rate_e 
+    enum class progress_rate_e 
     {
         none = 0,
         query_status,
@@ -39,16 +41,7 @@ struct service
         wait_for_dependents_stop,
         wait_for_start,
     };
-
-    using executor_t = std::function<mgpp::err()>;
-    using process_rate_cb_t = std::function<void(process_rate_e, int _count)>;
-
-    enum class event_level_e : uint32_t
-    {
-        error = 0xC0020001,
-        info  = 0x40020001,
-        warn  = 0x80020001
-    };
+    using progress_rate_cb_t = std::function<void(progress_rate_e, int _count)>;
 
     struct install_options
     {
@@ -63,6 +56,42 @@ struct service
     struct stop_options
     {
         int timeout_ms = 30000; // Default timeout for service stop
+    };
+
+    void set_service_name(const memepp::string_view& _name)
+    {
+        service_name_ = mm_into<memepp::native_string>(_name);
+    }
+
+    mgpp::err install(const install_options& _opts);
+    mgpp::err uninstall();
+    mgpp::err start(const start_options& _opts, const progress_rate_cb_t& _process_rate_cb = nullptr);
+    mgpp::err stop (const stop_options&  _opts, const progress_rate_cb_t& _process_rate_cb = nullptr);
+
+private:
+    static mgpp::err __wait_service_status(
+        SC_HANDLE _scService, DWORD _desiredStatus, DWORD64 _timeout = 30000);
+
+	static mgpp::err __stop_dependent_services(
+        SC_HANDLE _scManager, SC_HANDLE _scService, const progress_rate_cb_t& _process_rate_cb);
+
+#if MG_OS__WIN_AVAIL
+    memepp::native_string service_name_;
+#else
+    memepp::string service_name_;
+#endif
+
+};
+
+struct service
+{
+    using executor_t = std::function<mgpp::err()>;
+
+    enum class event_level_e : uint32_t
+    {
+        error = 0xC0020001,
+        info  = 0x40020001,
+        warn  = 0x80020001
     };
 
     void set_service_name(const memepp::string_view& _name)
@@ -85,6 +114,17 @@ struct service
     {
         stop_req_fn_ = _fn;
     }
+
+    void on_start_pending(const executor_t& _fn)
+    {
+        start_pending_fn_ = _fn;
+    }
+
+    void on_stop_pending (const executor_t& _fn)
+    {
+        stop_pending_fn_ = _fn;
+    }
+
     void on_loop (const executor_t& _fn)
     {
         loop_fn_ = _fn;
@@ -103,11 +143,6 @@ struct service
     {
         stopped_fn_ = _fn;
     }
-
-    mgpp::err install(const install_options& _opts);
-    mgpp::err uninstall();
-    mgpp::err start(const start_options& _opts, const process_rate_cb_t& _process_rate_cb = nullptr);
-    mgpp::err stop (const stop_options&  _opts, const process_rate_cb_t& _process_rate_cb = nullptr);
 
     mgpp::err run();
 
@@ -146,6 +181,9 @@ private:
         DWORD _dwCtrl, DWORD _dwEventType, LPVOID _lpEventData);
 	LONG  __on_unhandled_exception_handler(EXCEPTION_POINTERS *_lpExceptionInfo);
 
+    mgpp::err __on_start_pending();
+    mgpp::err __on_stop_pending();
+
 	static VOID  __win_svc_report_status(
         SERVICE_STATUS_HANDLE _handle, 
         DWORD _dwCurrentState, DWORD _dwWin32ExitCode, DWORD _dwWaitHint,
@@ -157,18 +195,14 @@ private:
 	static LONG  WINAPI __unhandled_exception_handler(
         EXCEPTION_POINTERS *_lpExceptionInfo);
     
-    static mgpp::err __wait_service_status(
-        SC_HANDLE _scService, DWORD _desiredStatus, DWORD64 _timeout = 30000);
-
-	static mgpp::err __stop_dependent_services(
-        SC_HANDLE _scManager, SC_HANDLE _scService, const process_rate_cb_t& _process_rate_cb);
-
 #endif
 
     mutable std::mutex mutex_;
     executor_t init_fn_;
     executor_t start_req_fn_;
     executor_t stop_req_fn_;
+    executor_t start_pending_fn_;
+    executor_t stop_pending_fn_;
     executor_t loop_fn_;
     executor_t exit_fn_;
     executor_t started_fn_;
@@ -183,9 +217,13 @@ private:
 #if MG_OS__WIN_AVAIL
 	SERVICE_STATUS_HANDLE service_status_handle_ = nullptr;
 	SERVICE_STATUS service_status_;
+    std::future<mgpp::err> stop_future_;
+    std::thread stop_thread_;
 #endif
 
     std::atomic_bool is_stopping_ = false;
+    int start_pending_timeout_ms_ = 30000; // Default timeout for service start pending
+    int stop_pending_timeout_ms_  = 30000;  // Default timeout for service stop
 };
 
 service::service()
@@ -194,12 +232,12 @@ service::service()
     memset(&service_status_, 0, sizeof(service_status_));
     service_status_.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
     service_status_.dwControlsAccepted = 
-        SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN | SERVICE_ACCEPT_TIMECHANGE;
+        SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
     service_status_.dwServiceSpecificExitCode = 0;
 #endif
 }
 
-inline mgpp::err service::install(const install_options& _opts)
+inline mgpp::err service_controller::install(const install_options& _opts)
 {		
 #if MG_OS__WIN_AVAIL
     auto progPath = mmupp::fs::program_file_path();
@@ -216,11 +254,9 @@ inline mgpp::err service::install(const install_options& _opts)
     }
     MEGOPP_UTIL__ON_SCOPE_CLEANUP([&] { CloseServiceHandle(schSCManager); });
 
-    std::unique_lock locker{ mutex_ };
     if (service_name_.empty())
         return { MGEC__INVAL, "Service name is not set" };
     auto service_name = service_name_;
-    locker.unlock();
 
     memepp::native_string exePath;
     if (progPath.starts_with('\"')) {
@@ -282,7 +318,7 @@ inline mgpp::err service::install(const install_options& _opts)
 #endif
 }
 
-inline mgpp::err service::uninstall()
+inline mgpp::err service_controller::uninstall()
 {
 #if MG_OS__WIN_AVAIL
     SC_HANDLE schSCManager;
@@ -297,11 +333,9 @@ inline mgpp::err service::uninstall()
     }
     MEGOPP_UTIL__ON_SCOPE_CLEANUP([&] { CloseServiceHandle(schSCManager); });
 
-    std::unique_lock locker{ mutex_ };
     if (service_name_.empty())
         return { MGEC__INVAL, "Service name is not set" };
     auto service_name = service_name_;
-    locker.unlock();
 
     schService = OpenServiceW(
         schSCManager,
@@ -326,7 +360,7 @@ inline mgpp::err service::uninstall()
 #endif
 }
 
-inline mgpp::err service::start(const start_options& _opts, const process_rate_cb_t& _process_rate_cb)
+inline mgpp::err service_controller::start(const start_options& _opts, const progress_rate_cb_t& _process_rate_cb)
 {
 #if MG_OS__WIN_AVAIL
     mgpp::err err;
@@ -339,11 +373,9 @@ inline mgpp::err service::start(const start_options& _opts, const process_rate_c
     }
     MEGOPP_UTIL__ON_SCOPE_CLEANUP([&] { CloseServiceHandle(schSCManager); });
 
-    std::unique_lock locker{ mutex_ };
     if (service_name_.empty())
         return { MGEC__INVAL, "Service name is not set" };
     auto service_name = service_name_;
-    locker.unlock();
 
     auto schService = OpenServiceW(
         schSCManager,         // SCM database 
@@ -355,7 +387,7 @@ inline mgpp::err service::start(const start_options& _opts, const process_rate_c
     MEGOPP_UTIL__ON_SCOPE_CLEANUP([&] { CloseServiceHandle(schService); });
 
     if (_process_rate_cb) {
-        _process_rate_cb(process_rate_e::query_status, 0);
+        _process_rate_cb(progress_rate_e::query_status, 0);
     }
 
 	SERVICE_STATUS_PROCESS serviceStatus;
@@ -377,7 +409,7 @@ inline mgpp::err service::start(const start_options& _opts, const process_rate_c
     if (serviceStatus.dwCurrentState == SERVICE_START_PENDING)
     {
         if (_process_rate_cb) {
-            _process_rate_cb(process_rate_e::wait_for_start, 0);
+            _process_rate_cb(progress_rate_e::wait_for_start, 0);
         }
 
         err = __wait_service_status(
@@ -391,7 +423,7 @@ inline mgpp::err service::start(const start_options& _opts, const process_rate_c
     if (serviceStatus.dwCurrentState == SERVICE_STOP_PENDING)
     {
         if (_process_rate_cb) {
-            _process_rate_cb(process_rate_e::wait_for_stop, 0);
+            _process_rate_cb(progress_rate_e::wait_for_stop, 0);
         }
 
         err = __wait_service_status(schService, SERVICE_STOPPED, _opts.timeout_ms);
@@ -411,7 +443,7 @@ inline mgpp::err service::start(const start_options& _opts, const process_rate_c
     }
 
     if (_process_rate_cb) {
-        _process_rate_cb(process_rate_e::wait_for_start, 0);
+        _process_rate_cb(progress_rate_e::wait_for_start, 0);
     }
 
     err = __wait_service_status(schService, SERVICE_RUNNING, _opts.timeout_ms); // Wait for service to start
@@ -424,7 +456,7 @@ inline mgpp::err service::start(const start_options& _opts, const process_rate_c
 #endif
 }
 
-inline mgpp::err service::stop(const stop_options& _opts, const process_rate_cb_t& _process_rate_cb)
+inline mgpp::err service_controller::stop(const stop_options& _opts, const progress_rate_cb_t& _process_rate_cb)
 {
 #if MG_OS__WIN_AVAIL
     mgpp::err err;
@@ -437,11 +469,9 @@ inline mgpp::err service::stop(const stop_options& _opts, const process_rate_cb_
     }
     MEGOPP_UTIL__ON_SCOPE_CLEANUP([&] { CloseServiceHandle(schSCManager); });
 
-    std::unique_lock locker{ mutex_ };
     if (service_name_.empty())
         return { MGEC__INVAL, "Service name is not set" };
     auto service_name = service_name_;
-    locker.unlock();
 
     auto schService = OpenServiceW(
         schSCManager,         // SCM database 
@@ -453,7 +483,7 @@ inline mgpp::err service::stop(const stop_options& _opts, const process_rate_cb_
     MEGOPP_UTIL__ON_SCOPE_CLEANUP([&] { CloseServiceHandle(schService); });
 
     if (_process_rate_cb) {
-        _process_rate_cb(process_rate_e::query_status, 0);
+        _process_rate_cb(progress_rate_e::query_status, 0);
     }
 
     SERVICE_STATUS_PROCESS serviceStatus;
@@ -475,7 +505,7 @@ inline mgpp::err service::stop(const stop_options& _opts, const process_rate_cb_
     if (serviceStatus.dwCurrentState == SERVICE_STOP_PENDING)
     {
         if (_process_rate_cb) {
-            _process_rate_cb(process_rate_e::wait_for_stop, 0);
+            _process_rate_cb(progress_rate_e::wait_for_stop, 0);
         }
         
         err = __wait_service_status(
@@ -489,7 +519,7 @@ inline mgpp::err service::stop(const stop_options& _opts, const process_rate_cb_
     if (serviceStatus.dwCurrentState == SERVICE_START_PENDING)
     {
         if (_process_rate_cb) {
-            _process_rate_cb(process_rate_e::wait_for_start, 0);
+            _process_rate_cb(progress_rate_e::wait_for_start, 0);
         }
 
         err = __wait_service_status(
@@ -514,7 +544,7 @@ inline mgpp::err service::stop(const stop_options& _opts, const process_rate_cb_
     }
 
     if (_process_rate_cb) {
-        _process_rate_cb(process_rate_e::wait_for_stop, 0);
+        _process_rate_cb(progress_rate_e::wait_for_stop, 0);
     }
 
     err = __wait_service_status(
@@ -613,6 +643,7 @@ inline void service::__on_win_svc_main(DWORD _dwArgc, LPWSTR *_lpszArgv)
         return;
     }
     auto service_name = service_name_;
+    auto start_pending_timeout = start_pending_timeout_ms_;
     locker.unlock();
 
 	service_status_handle_ = RegisterServiceCtrlHandlerExW(
@@ -624,9 +655,9 @@ inline void service::__on_win_svc_main(DWORD _dwArgc, LPWSTR *_lpszArgv)
 		return;
 	}
 
-    std::unique_lock locker{ mutex_ };
+    locker.lock();
 	__win_svc_report_status(
-        service_status_handle_, SERVICE_START_PENDING, NO_ERROR, 30000, service_status_);
+        service_status_handle_, SERVICE_START_PENDING, NO_ERROR, start_pending_timeout, service_status_);
     locker.unlock();
 
 	mgpp::err result;
@@ -679,46 +710,56 @@ inline void service::__on_win_svc_main(DWORD _dwArgc, LPWSTR *_lpszArgv)
 		return;
 	}
 
-	try {
-		if (started_fn_)
-			result = started_fn_();
-        else
-            result = {};
-	}
-	catch (...) {
-		report_event(service_name, event_level_e::error, 
-            L"In service::__on_win_svc_main, started callback throw exception");
-        locker.lock();
-		__win_svc_report_status(
-            service_status_handle_, SERVICE_STOPPED, ERROR_INVALID_FUNCTION, 0, service_status_);
-		return;
-	}
-	if (result) {
-        report_event(service_name, event_level_e::error, 
-            L"In service::__on_win_svc_main, started callback returned error");
-        locker.lock();
-        __win_svc_report_status(
-            service_status_handle_, SERVICE_STOPPED, ERROR_INVALID_FUNCTION, 0, service_status_);
-		return;
-	}
-
     locker.lock();
 	__win_svc_report_status(
-            service_status_handle_, SERVICE_RUNNING, NO_ERROR, 0, service_status_);
+            service_status_handle_, SERVICE_START_PENDING, NO_ERROR, start_pending_timeout, service_status_);
     locker.unlock();
+
+    std::thread thread {
+        [this, service_name]() {
+            try {
+                __on_start_pending();
+            } catch (...) {
+                report_event(service_name, event_level_e::error, 
+                    L"In service::__on_win_svc_main, start pending callback throw exception");
+            }
+        }};
+    MEGOPP_UTIL__ON_SCOPE_CLEANUP([&] {
+        if (locker.owns_lock()) {
+            locker.unlock();
+        }
+
+        if (thread.joinable()) {
+            thread.join();
+        }
+    });
+
+    auto stop_thread_cleanup = mgpp::util::scope_cleanup__create([&]() 
+    {
+        if (locker.owns_lock()) {
+            locker.lock();
+        }
+        if (stop_thread_.joinable()) {
+            stop_thread_.join();
+        }
+        stop_future_ = std::future<mgpp::err>{}; // Clear the future
+    });
 
 	try {
         if(loop_fn_)
 		    result = loop_fn_();
         else {
             report_event(service_name, event_level_e::info, 
-                L"In ServiceRegistrar::__onWinSvcMain, loop callback is not set");
-            result = {};
+                L"In service::__on_win_svc_main, loop callback is not set");
+            locker.lock();
+            __win_svc_report_status(
+                service_status_handle_, SERVICE_STOPPED, ERROR_INVALID_FUNCTION, 0, service_status_);
+            return;
         }
 	}
 	catch (...) {
 		report_event(service_name, event_level_e::error, 
-            L"In ServiceRegistrar::__onWinSvcMain, loop callback throw exception");
+            L"In service::__on_win_svc_main, loop callback throw exception");
         locker.lock();
 		__win_svc_report_status(
             service_status_handle_, SERVICE_STOPPED, ERROR_INVALID_FUNCTION, 0, service_status_);
@@ -726,12 +767,24 @@ inline void service::__on_win_svc_main(DWORD _dwArgc, LPWSTR *_lpszArgv)
 	}
 	if (result) {
         report_event(service_name, event_level_e::error, 
-            L"In ServiceRegistrar::__onWinSvcMain, loop callback returned error");
+            L"In service::__on_win_svc_main, loop callback returned error");
         locker.lock();
         __win_svc_report_status(
             service_status_handle_, SERVICE_STOPPED, ERROR_INVALID_FUNCTION, 0, service_status_);
 		return;
 	}
+
+    if (stop_future_.valid()) {
+        result = stop_future_.get(); // Wait for stop request to complete
+    }
+    if (result) {
+        report_event(service_name, event_level_e::error, 
+            L"In service::__on_win_svc_main, stop request returned error");
+        locker.lock();
+        __win_svc_report_status(
+            service_status_handle_, SERVICE_STOPPED, ERROR_INVALID_FUNCTION, 0, service_status_);
+        return;
+    }
 
 	try {
 		if (stopped_fn_)
@@ -741,7 +794,7 @@ inline void service::__on_win_svc_main(DWORD _dwArgc, LPWSTR *_lpszArgv)
 	}
 	catch (...) {
 		report_event(service_name, event_level_e::error, 
-            L"In ServiceRegistrar::__onWinSvcMain, stopped callback throw exception");
+            L"In service::__on_win_svc_main, stopped callback throw exception");
         locker.lock();
 		__win_svc_report_status(
             service_status_handle_, SERVICE_STOPPED, ERROR_INVALID_FUNCTION, 0, service_status_);
@@ -750,7 +803,7 @@ inline void service::__on_win_svc_main(DWORD _dwArgc, LPWSTR *_lpszArgv)
         
 	if (result) {
         report_event(service_name, event_level_e::error, 
-            L"In ServiceRegistrar::__onWinSvcMain, stopped callback returned error");
+            L"In service::__on_win_svc_main, stopped callback returned error");
         locker.lock();
         __win_svc_report_status(
             service_status_handle_, SERVICE_STOPPED, ERROR_INVALID_FUNCTION, 0, service_status_);
@@ -760,6 +813,7 @@ inline void service::__on_win_svc_main(DWORD _dwArgc, LPWSTR *_lpszArgv)
     locker.lock();
 	__win_svc_report_status(service_status_handle_, SERVICE_STOPPED, NO_ERROR, 0, service_status_);
     locker.unlock();
+
 }
 #endif
 
@@ -774,8 +828,9 @@ inline DWORD service::__on_win_svc_ctrl_handler(
 
         std::unique_lock locker{ mutex_ };
         auto service_name = service_name_;
+        auto stop_pending_timeout = stop_pending_timeout_ms_;
 		__win_svc_report_status(
-            service_status_handle_, SERVICE_STOP_PENDING, NO_ERROR, 30000, service_status_);
+            service_status_handle_, SERVICE_STOP_PENDING, NO_ERROR, stop_pending_timeout, service_status_);
         locker.unlock();
 			// Signal the service to stop.
 
@@ -806,10 +861,24 @@ inline DWORD service::__on_win_svc_ctrl_handler(
 			return NO_ERROR;
 		}
 
-        // locker.lock();
-		// __win_svc_report_status(
-        //     service_status_handle_, SERVICE_STOPPED, NO_ERROR, 0, service_status_);
-        // locker.unlock();
+        locker.lock();
+        __win_svc_report_status(
+            service_status_handle_, SERVICE_STOP_PENDING, NO_ERROR, stop_pending_timeout, service_status_);
+        locker.unlock();
+
+        std::packaged_task<mgpp::err()> stop_task{ [this, service_name]() {
+            try {
+                return __on_stop_pending();
+            } catch (...) {
+                report_event(service_name, event_level_e::error, 
+                    L"In service::__on_win_svc_ctrl_handler, stop pending callback throw exception");
+                return mgpp::err{ MGEC__ERR, "Exception in stop pending callback" };
+            }
+        } };
+        stop_thread_ = std::thread([task = std::move(stop_task)]() mutable {
+            task();
+        });
+        stop_future_ = stop_task.get_future();
 
 		return NO_ERROR;
 
@@ -871,6 +940,128 @@ inline LONG service::__on_unhandled_exception_handler(EXCEPTION_POINTERS *_lpExc
 #endif 
 
 #if MG_OS__WIN_AVAIL
+inline mgpp::err service::__on_start_pending()
+{
+    std::unique_lock locker{ mutex_ };
+    if (!service_status_handle_)
+        return { MGEC__INVAL, "Service status handle is not set" };
+    if (!start_pending_fn_ && !started_fn_) {
+        return {};
+    }
+    auto pending_fn = start_pending_fn_;
+    auto started_fn = started_fn_;
+    auto pending_timeout = start_pending_timeout_ms_;
+    locker.unlock();
+
+    mgpp::err result;
+    std::atomic_bool pending_done{ false };
+    std::thread worker{ [&] {
+        try {
+            if (pending_fn) {
+                result = pending_fn();
+            } else {
+                result = {};
+            }
+        } catch (...) {
+            result = { MGEC__ERR, "Exception in service start pending callback" };
+        }
+        pending_done = true;
+
+        if (result) {
+            // If the pending callback returned an error, we don't call the started callback.
+            return;
+        }
+
+        try {
+            if (started_fn) {
+                result = started_fn();
+            } else {
+                result = {};
+            }
+        } catch (...) {
+            result = { MGEC__ERR, "Exception in service started callback" };
+        }
+    } };
+
+    auto tick = pending_timeout / 10;
+    if (tick < 150)
+        tick = 150; // Ensure we don't sleep less than 150ms
+    else if (tick > 1000)
+        tick = 1000; // Ensure we don't sleep more than 1 second
+    while (!pending_done) {
+        locker.lock();
+        __win_svc_report_status(
+            service_status_handle_, SERVICE_START_PENDING, NO_ERROR, pending_timeout, service_status_);
+        locker.unlock();
+
+        Sleep(tick);
+    }
+
+    if (worker.joinable()) {
+        worker.join();
+    }
+
+    locker.lock();
+    __win_svc_report_status(
+        service_status_handle_, SERVICE_RUNNING, NO_ERROR, 0, service_status_);
+    locker.unlock();
+
+    return result;
+}
+#endif
+
+#if MG_OS__WIN_AVAIL
+inline mgpp::err service::__on_stop_pending()
+{
+    std::unique_lock locker{ mutex_ };
+    if (!service_status_handle_)
+        return { MGEC__INVAL, "Service status handle is not set" };
+    if (!stop_pending_fn_) {
+        return {};
+    }
+    auto pending_fn = stop_pending_fn_;
+    auto pending_timeout = stop_pending_timeout_ms_;
+    locker.unlock();
+
+    mgpp::err result;
+    std::atomic_bool pending_done{ false };
+    std::thread worker{ [&] {
+        try {
+            if (pending_fn) {
+                result = pending_fn();
+            } else {
+                result = {};
+            }
+        } catch (...) {
+            result = { MGEC__ERR, "Exception in service stop pending callback" };
+        }
+        pending_done = true;
+    } };
+
+    auto tick = pending_timeout / 10;
+    if (tick < 150)
+        tick = 150; // Ensure we don't sleep less than 150ms
+    else if (tick > 1000)
+        tick = 1000; // Ensure we don't sleep more than 1 second
+    while (!pending_done) {
+        locker.lock();
+        __win_svc_report_status(
+            service_status_handle_, SERVICE_STOP_PENDING, NO_ERROR, pending_timeout, service_status_);
+        locker.unlock();
+
+        Sleep(tick);
+    }
+
+    if (worker.joinable()) {
+        worker.join();
+    }
+
+    return result;
+}
+#endif
+    
+
+#if MG_OS__WIN_AVAIL
 inline VOID service::__win_svc_report_status(
     SERVICE_STATUS_HANDLE _handle, 
     DWORD _dwCurrentState, DWORD _dwWin32ExitCode, DWORD _dwWaitHint,
@@ -884,7 +1075,7 @@ inline VOID service::__win_svc_report_status(
 		_status.dwControlsAccepted = 0;
 	else 
 		_status.dwControlsAccepted = 
-            SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN | SERVICE_ACCEPT_TIMECHANGE;
+            SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
 
 	if ((_dwCurrentState == SERVICE_RUNNING) ||
 		(_dwCurrentState == SERVICE_STOPPED))
@@ -921,12 +1112,13 @@ inline LONG WINAPI service::__unhandled_exception_handler(EXCEPTION_POINTERS *_l
 #endif
 
 #if MG_OS__WIN_AVAIL
-inline mgpp::err service::__wait_service_status(
+inline mgpp::err service_controller::__wait_service_status(
     SC_HANDLE _scService, DWORD _desiredStatus, DWORD64 _timeout)
 {
 	DWORD64 dwStartTime = GetTickCount64();
     DWORD dwOldCheckPoint = 0;
     SERVICE_STATUS_PROCESS serviceStatus;
+    memset(&serviceStatus, 0, sizeof(serviceStatus));
     while (true) {
         if (!QueryServiceStatusEx(
             _scService,
@@ -949,8 +1141,8 @@ inline mgpp::err service::__wait_service_status(
         }
 
         auto dwWaitTime = serviceStatus.dwWaitHint / 10;
-        if (dwWaitTime < 100)
-            dwWaitTime = 100;
+        if (dwWaitTime < 150)
+            dwWaitTime = 150;
         else if (dwWaitTime > 5000)
             dwWaitTime = 5000;
         Sleep(dwWaitTime);
@@ -960,15 +1152,15 @@ inline mgpp::err service::__wait_service_status(
 
 
 #if MG_OS__WIN_AVAIL
-inline mgpp::err service::__stop_dependent_services(
-    SC_HANDLE _scManager, SC_HANDLE _scService, const process_rate_cb_t& _process_rate_cb)
+inline mgpp::err service_controller::__stop_dependent_services(
+    SC_HANDLE _scManager, SC_HANDLE _scService, const progress_rate_cb_t& _process_rate_cb)
 {
 	DWORD dwBytesNeeded;
 	DWORD dwCount;
 	LPENUM_SERVICE_STATUSW lpDependencies = NULL;
 
     if (EnumDependentServicesW(
-        _scService, SERVICE_ACTIVE, lpDependencies, 0, &dwBytesNeeded, &dwCount))
+        _scService, SERVICE_ACTIVE, NULL, 0, &dwBytesNeeded, &dwCount))
     {
         // Successfully enumerated dependent services.
         return {};
@@ -1014,14 +1206,13 @@ inline mgpp::err service::__stop_dependent_services(
         }
         
         if (_process_rate_cb) {
-            _process_rate_cb(process_rate_e::wait_for_dependents_stop, index);
+            _process_rate_cb(progress_rate_e::wait_for_dependents_stop, index);
         }
 
         auto err = __wait_service_status(
             hDependentService, SERVICE_STOPPED, 30000); // Wait for dependent service to stop
         if (err) {
-            // Handle the error if needed.
-            continue;
+            return err;
         }
     }
     return {};
