@@ -1025,8 +1025,9 @@ inline mgpp::err service::__on_start_pending()
             service_status_handle_, SERVICE_START_PENDING, NO_ERROR, pending_timeout, service_status_);
         locker.unlock();
 
-        if (progress->get_rate() != last_progress) {
-            last_progress = progress->get_rate();
+        int progress_rate = progress->get_rate();
+        if (progress_rate != last_progress) {
+            last_progress = progress_rate;
             start_time = GetTickCount64();
         }
         else if (GetTickCount64() - start_time > pending_timeout) {
@@ -1093,8 +1094,9 @@ inline mgpp::err service::__on_stop_pending()
             service_status_handle_, SERVICE_STOP_PENDING, NO_ERROR, pending_timeout, service_status_);
         locker.unlock();
 
-        if (progress->get_rate() != last_progress) {
-            last_progress = progress->get_rate();
+        int progress_rate = progress->get_rate();
+        if (progress_rate != last_progress) {
+            last_progress = progress_rate;
             start_time = GetTickCount64();
         }
         else if (GetTickCount64() - start_time > pending_timeout) {
