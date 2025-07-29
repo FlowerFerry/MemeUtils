@@ -2,6 +2,8 @@
 #ifndef MMU_SYNC_OS_WINDOWS_PROCESS_MUTEX_H_INCLUDED
 #define MMU_SYNC_OS_WINDOWS_PROCESS_MUTEX_H_INCLUDED
 
+#include <stdint.h>
+
 #include <mego/util/os/windows/windows_simplify.h>
 #include <mego/util/math.h>
 
@@ -24,14 +26,14 @@ static int mmu_pmtx__timedlock(mmu_pmtx_t *_mtx, uint64_t _timeout_ms);
 
 static inline int mmu_pmtx__init(mmu_pmtx_t *_mtx, const char *_name, size_t _name_len)
 {
-    const char full_name[MAX_PATH] = "Global\\";
+    char full_name[MAX_PATH] = "Global\\";
     if (_name == NULL || _name_len == 0) {
         return -1;
     }
     if (_name_len > MAX_PATH - 8) {
         return -1;
     }
-    if (strncpy(full_name, _name, MGU_MATH__MIN(_name_len, sizeof(full_name) - 1)) == NULL) 
+    if (strncat(full_name, _name, MGU_MATH__MIN(_name_len, sizeof(full_name) - 1 - 8)) == NULL) 
     {
         return -1;
     }

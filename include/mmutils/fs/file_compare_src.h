@@ -115,6 +115,8 @@ inline int mmu_file_compare_by_mmap(FILE* _fp1, FILE* _fp2)
 
     len1 = GetFileSize(h1, NULL);
     len2 = GetFileSize(h2, NULL);
+    if (len1 == INVALID_FILE_SIZE || len2 == INVALID_FILE_SIZE)
+        return -1;
 
     if (len1 != len2)
         return 0;
@@ -125,15 +127,13 @@ inline int mmu_file_compare_by_mmap(FILE* _fp1, FILE* _fp2)
     do {
         mmint_t offset = 0;
         mmint_t block_size = 1024 * 1024;
-        if (prelen) {
-            if (len1 <= prelen)
-                prelen = len1;
 
-            len1 -= prelen;
-            offset = len1;
-            block_size = prelen;
-            prelen = 0;
-        }
+        if (len1 <= prelen)
+            prelen = len1;
+
+        len1 -= prelen;
+        offset = len1;
+        block_size = prelen;
 
         map1 = CreateFileMapping(h1, NULL, PAGE_READONLY, 0, 0, NULL);
         if (!map1)
@@ -203,15 +203,13 @@ inline int mmu_file_compare_by_mmap(FILE* _fp1, FILE* _fp2)
     do {
         mmint_t offset = 0;
         mmint_t block_size = 1024 * 1024;
-        if (prelen) {
-            if (len1 <= prelen)
-                prelen = len1;
 
-            len1 -= prelen;
-            offset = len1;
-            block_size = prelen;
-            prelen = 0;
-        }
+        if (len1 <= prelen)
+            prelen = len1;
+
+        len1 -= prelen;
+        offset = len1;
+        block_size = prelen;
 
         map1 = mmap(NULL, block_size, PROT_READ, MAP_SHARED, fd1, offset);
         if (map1 == MAP_FAILED)

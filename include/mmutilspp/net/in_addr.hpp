@@ -17,6 +17,7 @@
 namespace mmupp {
 namespace net {
 
+    //! @deprecated
     struct in04_addr
     {
         in04_addr()
@@ -141,6 +142,7 @@ namespace net {
         ::in_addr addr_;
     };
 
+    //! @deprecated
     struct in06_addr
     {
         in06_addr()
@@ -242,6 +244,7 @@ namespace net {
         ::in6_addr addr_;
     };
 
+    //! @deprecated
     struct in_addr
     {
         in_addr()

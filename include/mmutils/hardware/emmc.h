@@ -87,7 +87,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
     
     len = fread(buf, 1, sizeof(buf), fp);
     fclose(fp);
-    if (len == 0) {
+    if (len == 0 || len >= sizeof(buf)) {
         return -1;
     }
     
@@ -104,7 +104,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
     if (fp) {
         len = fread(buf, 1, sizeof(buf), fp);
         fclose(fp);
-        if (len > 0) {
+        if (len > 0 && len < sizeof(buf)) {
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
@@ -117,7 +117,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
     if (fp) {
         len = fread(buf, 1, sizeof(buf), fp);
         fclose(fp);
-        if (len > 0) {
+        if (len > 0 && len < sizeof(buf)) {
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
@@ -130,7 +130,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
     if (fp) {
         len = fread(buf, 1, sizeof(buf), fp);
         fclose(fp);
-        if (len > 0) {
+        if (len > 0 && len < sizeof(buf)) {
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
@@ -143,7 +143,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
     if (fp) {
         len = fread(buf, 1, sizeof(buf), fp);
         fclose(fp);
-        if (len > 0) {
+        if (len > 0 && len < sizeof(buf)) {
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
@@ -156,7 +156,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
     if (fp) {
         len = fread(buf, 1, sizeof(buf), fp);
         fclose(fp);
-        if (len > 0) {
+        if (len > 0 && len < sizeof(buf)) {
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
@@ -169,7 +169,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
     if (fp) {
         len = fread(buf, 1, sizeof(buf), fp);
         fclose(fp);
-        if (len > 0) {
+        if (len > 0 && len < sizeof(buf)) {
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
@@ -182,7 +182,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
     if (fp) {
         len = fread(buf, 1, sizeof(buf), fp);
         fclose(fp);
-        if (len > 0) {
+        if (len > 0 && len < sizeof(buf)) {
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
             }
@@ -191,7 +191,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
     }
 
 #endif
-    return 0;
+    return -1;
 }
 
 //! @brief 获取系统中所有 eMMC 设备的信息列表。
@@ -232,7 +232,8 @@ MG_CAPI_INLINE int mmu_get_emmc_info_list(struct mmu_emmc_info* _info, size_t* _
         }
 
         if (!info) {
-            ++(*_size);
+            if (_size)
+                ++(*_size);
         }
         else {
             mmu_get_emmc_info(ent->d_name, strlen(ent->d_name), info);
