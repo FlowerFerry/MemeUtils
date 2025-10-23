@@ -26,6 +26,8 @@ struct span2d
     span2d() noexcept
         : x_size_(0)
         , y_size_(0)
+        , coefficient_(1.0)
+        , offset_(0)
         , x_interval_(1)
         , y_interval_(1)
         , layout_(storage_layout::y_major)
@@ -36,6 +38,8 @@ struct span2d
         : data_(_data)
         , x_size_(_x_size)
         , y_size_(_y_size)
+        , coefficient_(1.0)
+        , offset_(0)
         , x_interval_(1)
         , y_interval_(1)
         , layout_(storage_layout::y_major)
@@ -51,6 +55,8 @@ struct span2d
         , y_size_(_y_size)
         , x_axis_(_x_axis)
         , y_axis_(_y_axis)
+        , coefficient_(1.0)
+        , offset_(0)
         , x_interval_(1)
         , y_interval_(1)
         , layout_(storage_layout::y_major)
@@ -65,6 +71,9 @@ struct span2d
     inline const axis_info& x_axis() const noexcept { return x_axis_; }
     inline const axis_info& y_axis() const noexcept { return y_axis_; }
 
+    inline double coefficient() const noexcept { return coefficient_; }
+    inline const _Ty& offset() const noexcept { return offset_; }
+
     inline const _Ty& x_interval() const noexcept { return x_interval_; }
     inline const _Ty& y_interval() const noexcept { return y_interval_; }
 
@@ -75,9 +84,9 @@ struct span2d
         if (_x >= x_size_ || _y >= y_size_)
             throw std::out_of_range("span2d: index out of range");
         if (layout_ == storage_layout::x_major)
-            return data_[_x * y_size_ + _y];
+            return data_[_x * y_size_ + _y] * coefficient_ + offset_;
         else
-            return data_[_y * x_size_ + _x];
+            return data_[_y * x_size_ + _x] * coefficient_ + offset_;
     }
 
     inline _Ty x_at(std::size_t _x) const
@@ -94,9 +103,15 @@ struct span2d
         return y_interval_ * static_cast<_Ty>(_y);
     }
 
+    inline void set_coefficient(double _coefficient) noexcept { coefficient_ = _coefficient; }
+    inline void set_offset(const _Ty& _offset) noexcept { offset_ = _offset; }
+
     inline void set_x_interval(const _Ty& _interval) noexcept { x_interval_ = _interval; }
     inline void set_y_interval(const _Ty& _interval) noexcept { y_interval_ = _interval; }
     inline void set_layout(storage_layout _layout) noexcept { layout_ = _layout; }
+
+    inline void set_x_axis(const axis_info& _x_axis) noexcept { x_axis_ = _x_axis; }
+    inline void set_y_axis(const axis_info& _y_axis) noexcept { y_axis_ = _y_axis; }
 
 private:
     nonstd::span<_Ty> data_;
@@ -104,10 +119,30 @@ private:
     std::size_t y_size_;
     axis_info x_axis_;
     axis_info y_axis_;
+    double coefficient_;
+    _Ty offset_;
     _Ty x_interval_;
     _Ty y_interval_;
     storage_layout layout_;
 };
+
+// template<typename _Ty>
+// struct span3d_combined
+// {
+
+//     nonstd::span<_Ty> data_xy_;
+//     nonstd::span<_Ty> data_xz_;
+//     std::size_t x_size_;
+//     std::size_t y_size_;
+//     std::size_t z_size_;
+//     axis_info x_axis_;
+//     axis_info y_axis_;
+//     axis_info z_axis_;
+//     _Ty x_interval_;
+//     _Ty y_interval_;
+//     _Ty z_interval_;
+
+// };
 
 }
 }
