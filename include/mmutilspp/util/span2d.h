@@ -5,6 +5,8 @@
 #include <memepp/string.hpp>
 #include <nonstd/span.hpp>
 
+#include <type_traits>
+
 namespace mmupp {
 namespace util {
 
@@ -17,6 +19,9 @@ struct axis_info
 template<typename _Ty>
 struct span2d
 {
+    using value_type = _Ty;
+    using mutable_value_type = typename std::remove_const<_Ty>::type;
+
     enum class storage_layout
     {
         x_major,
@@ -72,10 +77,10 @@ struct span2d
     inline const axis_info& y_axis() const noexcept { return y_axis_; }
 
     inline double coefficient() const noexcept { return coefficient_; }
-    inline const _Ty& offset() const noexcept { return offset_; }
+    inline const mutable_value_type& offset() const noexcept { return offset_; }
 
-    inline const _Ty& x_interval() const noexcept { return x_interval_; }
-    inline const _Ty& y_interval() const noexcept { return y_interval_; }
+    inline const mutable_value_type& x_interval() const noexcept { return x_interval_; }
+    inline const mutable_value_type& y_interval() const noexcept { return y_interval_; }
 
     inline storage_layout layout() const noexcept { return layout_; }
 
@@ -89,25 +94,25 @@ struct span2d
             return data_[_y * x_size_ + _x] * coefficient_ + offset_;
     }
 
-    inline _Ty x_at(std::size_t _x) const
+    inline mutable_value_type x_at(std::size_t _x) const
     {
         if (_x >= x_size_)
             throw std::out_of_range("span2d: x index out of range");
-        return x_interval_ * static_cast<_Ty>(_x);
+        return x_interval_ * static_cast<mutable_value_type>(_x);
     }
 
-    inline _Ty y_at(std::size_t _y) const
+    inline mutable_value_type y_at(std::size_t _y) const
     {
         if (_y >= y_size_)
             throw std::out_of_range("span2d: y index out of range");
-        return y_interval_ * static_cast<_Ty>(_y);
+        return y_interval_ * static_cast<mutable_value_type>(_y);
     }
 
     inline void set_coefficient(double _coefficient) noexcept { coefficient_ = _coefficient; }
-    inline void set_offset(const _Ty& _offset) noexcept { offset_ = _offset; }
+    inline void set_offset(const mutable_value_type& _offset) noexcept { offset_ = _offset; }
 
-    inline void set_x_interval(const _Ty& _interval) noexcept { x_interval_ = _interval; }
-    inline void set_y_interval(const _Ty& _interval) noexcept { y_interval_ = _interval; }
+    inline void set_x_interval(const mutable_value_type& _interval) noexcept { x_interval_ = _interval; }
+    inline void set_y_interval(const mutable_value_type& _interval) noexcept { y_interval_ = _interval; }
     inline void set_layout(storage_layout _layout) noexcept { layout_ = _layout; }
 
     inline void set_x_axis(const axis_info& _x_axis) noexcept { x_axis_ = _x_axis; }
@@ -120,9 +125,9 @@ private:
     axis_info x_axis_;
     axis_info y_axis_;
     double coefficient_;
-    _Ty offset_;
-    _Ty x_interval_;
-    _Ty y_interval_;
+    mutable_value_type offset_;
+    mutable_value_type x_interval_;
+    mutable_value_type y_interval_;
     storage_layout layout_;
 };
 
