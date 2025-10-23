@@ -84,7 +84,7 @@ struct span2d
 
     inline storage_layout layout() const noexcept { return layout_; }
 
-    inline const _Ty& at(std::size_t _x, std::size_t _y) const
+    inline mutable_value_type at(std::size_t _x, std::size_t _y) const
     {
         if (_x >= x_size_ || _y >= y_size_)
             throw std::out_of_range("span2d: index out of range");
