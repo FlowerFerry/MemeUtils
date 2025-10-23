@@ -39,7 +39,7 @@ struct span2d
     {
     }
 
-    span2d(const nonstd::span<_Ty>& _data, std::size_t _x_size, std::size_t _y_size) noexcept
+    span2d(const nonstd::span<_Ty>& _data, std::size_t _x_size, std::size_t _y_size)
         : data_(_data)
         , x_size_(_x_size)
         , y_size_(_y_size)
@@ -54,7 +54,7 @@ struct span2d
     }
 
     span2d(const nonstd::span<_Ty>& _data, std::size_t _x_size, std::size_t _y_size,
-        axis_info const& _x_axis, axis_info const& _y_axis) noexcept
+        axis_info const& _x_axis, axis_info const& _y_axis)
         : data_(_data)
         , x_size_(_x_size)
         , y_size_(_y_size)
