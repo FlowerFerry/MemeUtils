@@ -114,7 +114,9 @@ private:
         _Ty item;
         while (true) {
             std::unique_lock locker(mutex_);
-            task_avail_cv_.wait(locker, [this] { return !workers_running_; });
+            task_avail_cv_.wait(locker, [this] {
+                return !workers_running_ || (!paused_ && queue_.size_approx() > 0);
+            });
             if (!workers_running_) {
                 break;
             }

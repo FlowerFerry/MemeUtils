@@ -20,7 +20,7 @@ struct shared_status
         auto range = maximum_progress_ - minimum_progress_;
         if (range == 0)
             return 0.0;
-        return current_progress_ - minimum_progress_ / double(range);
+        return (current_progress_ - minimum_progress_) / double(range);
     }
 
     bool should_cancel() const
