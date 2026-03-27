@@ -1,4 +1,4 @@
-#ifndef MMUPP_OPENEXT_EXPRTK_DETAIL_FORMULA_SCANNER_H_INCLUDED
+﻿#ifndef MMUPP_OPENEXT_EXPRTK_DETAIL_FORMULA_SCANNER_H_INCLUDED
 #define MMUPP_OPENEXT_EXPRTK_DETAIL_FORMULA_SCANNER_H_INCLUDED
 
 // detail/formula_scanner.h — Shared position-aware lexer for exprtk formula strings.

@@ -1,4 +1,4 @@
-#ifndef MMUPP_OPENEXT_EXPRTK_EXTRACT_H_INCLUDED
+﻿#ifndef MMUPP_OPENEXT_EXPRTK_EXTRACT_H_INCLUDED
 #define MMUPP_OPENEXT_EXPRTK_EXTRACT_H_INCLUDED
 
 // extract.h — Parse IDs out of exprtk-style formula strings.

@@ -1,4 +1,4 @@
-#ifndef MMUPP_OPENEXT_EXPRTK_LOOP_GUARD_H_INCLUDED
+﻿#ifndef MMUPP_OPENEXT_EXPRTK_LOOP_GUARD_H_INCLUDED
 #define MMUPP_OPENEXT_EXPRTK_LOOP_GUARD_H_INCLUDED
 
 // loop_guard.h — Inject iteration-count guards into exprtk formula loops.
@@ -56,6 +56,11 @@ struct loop_guard_result
                               ///< prepended to the formula.
 };
 
+inline std::string guard_var_name_prefix()
+{
+    return "__mmutils_loop_guard_";
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Implementation detail — not part of the public API
 // ─────────────────────────────────────────────────────────────────────────────
@@ -74,7 +79,7 @@ struct splice
 // Build the guard variable name for the N-th loop (0-based).
 inline std::string guard_var_name(std::size_t n)
 {
-    return std::string("__mmutils_loop_guard_") + std::to_string(n) + "__";
+    return guard_var_name_prefix() + std::to_string(n) + "__";
 }
 
 // Apply a sorted-ascending list of splices to `original`, producing a new
