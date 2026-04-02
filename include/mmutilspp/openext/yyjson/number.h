@@ -20,7 +20,7 @@ namespace openext {
         switch (yyjson_get_type(v)) 
         {
         case YYJSON_TYPE_BOOL: 
-            return yyjson_get_bool(v) ? 1 : 0;
+            return static_cast<T>(yyjson_get_bool(v) ? 1 : 0);
         case YYJSON_TYPE_NUM: 
             return static_cast<T>(yyjson_get_num(v));
         case YYJSON_TYPE_STR: 
