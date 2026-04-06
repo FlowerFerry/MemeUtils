@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.20)
 
 project(unit_tests)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(GIT_HOST "github.com" CACHE STRING "Git host")
 
 message(STATUS "PROJECT_NAME: ${PROJECT_NAME}")
@@ -44,6 +47,12 @@ set(SOURCES
     test_dispatcher.cpp
     test_crc16.cpp
     test_locale_tag.cpp
+    test_exprtk_extract.cpp
+    test_exprtk_loop_guard.cpp
+    test_exprtk_noncoded.cpp
+    test_program_path.cpp
+    test_span2d.cpp
+    # test_translation.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
@@ -57,6 +66,7 @@ message(STATUS "PARENT_INCLUDE_DIR: ${PARENT_INCLUDE_DIR}")
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${PARENT_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/MemeString/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/span-lite/include
 )
 
 if(MSVC)

@@ -297,3 +297,116 @@ TEST_CASE("guard variable N increments per loop in textual order", "[loop_guard]
     CHECK(pos0 < pos1);
     CHECK(pos1 < pos2);
 }
+
+// ── Identifier false-positives ────────────────────────────────────────────────
+
+TEST_CASE("'while' as prefix of a longer identifier is not a loop", "[loop_guard]")
+{
+    // 'whileTrue' is a distinct identifier; must not be matched as 'while'.
+    const std::string f = "whileTrue := 1;";
+    auto r = guard_formula_loops(f);
+    CHECK(r.loop_count == 0);
+    CHECK(r.formula == f);
+}
+
+TEST_CASE("'for' as prefix of a longer identifier is not a loop", "[loop_guard]")
+{
+    // 'format' starts with 'for' but is a distinct identifier.
+    const std::string f = "format := 'csv';";
+    auto r = guard_formula_loops(f);
+    CHECK(r.loop_count == 0);
+    CHECK(r.formula == f);
+}
+
+TEST_CASE("'repeat' as prefix of a longer identifier is not a loop", "[loop_guard]")
+{
+    const std::string f = "repeater := x + 1;";
+    auto r = guard_formula_loops(f);
+    CHECK(r.loop_count == 0);
+    CHECK(r.formula == f);
+}
+
+// ── Boundary / edge cases ─────────────────────────────────────────────────────
+
+TEST_CASE("max_iterations = 1 injects boundary limit of 1 into guard", "[loop_guard]")
+{
+    auto r = guard_formula_loops("while (x < 10) { x := x + 1; }", 1);
+    CHECK(r.loop_count == 1);
+    CHECK(contains(r.formula, "<= 1"));
+    // Must NOT contain the default 1000000 limit.
+    CHECK(!contains(r.formula, "1000000"));
+}
+
+TEST_CASE("formula with only whitespace is unchanged and has 0 loops", "[loop_guard]")
+{
+    const std::string f = "   \t\n  ";
+    auto r = guard_formula_loops(f);
+    CHECK(r.loop_count == 0);
+    CHECK(r.formula == f);
+}
+
+TEST_CASE("formula with only a block comment is unchanged and has 0 loops", "[loop_guard]")
+{
+    // A loop keyword inside a block comment must not be guarded.
+    const std::string f = "/* while (x < 1) { x := x+1; } */";
+    auto r = guard_formula_loops(f);
+    CHECK(r.loop_count == 0);
+    CHECK(r.formula == f);
+}
+
+TEST_CASE("while with nested-paren condition is guarded correctly", "[loop_guard]")
+{
+    // The condition itself contains nested parens.
+    auto r = guard_formula_loops(
+        "while ((a > 0) and (b < 5)) { a := a - 1; }");
+    CHECK(r.loop_count == 1);
+    CHECK(contains(r.formula, "__mmutils_loop_guard_0__"));
+    // The entire original compound condition must appear as the second operand.
+    CHECK(contains(r.formula, "and ((a > 0) and (b < 5))"));
+}
+
+TEST_CASE("three-level nested while loops each get own guard variable", "[loop_guard]")
+{
+    auto r = guard_formula_loops(
+        "while (i < 3) { "
+        "  while (j < 3) { "
+        "    while (k < 3) { k := k + 1; }; "
+        "    j := j + 1; "
+        "  }; "
+        "  i := i + 1; "
+        "}");
+    CHECK(r.loop_count == 3);
+    CHECK(contains(r.formula, "__mmutils_loop_guard_0__"));
+    CHECK(contains(r.formula, "__mmutils_loop_guard_1__"));
+    CHECK(contains(r.formula, "__mmutils_loop_guard_2__"));
+}
+
+TEST_CASE("for loop with empty init still injects guard into condition", "[loop_guard]")
+{
+    // for (; i < 10; i := i + 1) — empty INIT section
+    auto r = guard_formula_loops("for (; i < 10; i := i + 1) { }");
+    CHECK(r.loop_count == 1);
+    CHECK(contains(r.formula, "__mmutils_loop_guard_0__"));
+    CHECK(contains(r.formula, "and (i < 10)"));
+}
+
+TEST_CASE("repeat-until with compound or-condition is guarded correctly", "[loop_guard]")
+{
+    // Original condition: (x >= 5) or (y > 10)
+    // Guard wraps so either the original exits OR the guard counter hits max.
+    auto r = guard_formula_loops(
+        "repeat { x := x + 1; } until ((x >= 5) or (y > 10))");
+    CHECK(r.loop_count == 1);
+    CHECK(contains(r.formula, "__mmutils_loop_guard_0__"));
+    // Resulting structure: until (((x >= 5) or (y > 10)) or ((...) >= MAX))
+    CHECK(contains(r.formula, "until (((x >= 5) or (y > 10)) or ("));
+}
+
+TEST_CASE("while missing opening paren after keyword is skipped gracefully", "[loop_guard]")
+{
+    // 'while' not followed by '(' must not crash or inject a guard.
+    const std::string f = "while x < 10;";
+    auto r = guard_formula_loops(f);
+    CHECK(r.loop_count == 0);
+    CHECK(r.formula == f);
+}

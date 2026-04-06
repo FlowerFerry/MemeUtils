@@ -271,3 +271,178 @@ TEST_CASE("param_index 1 with nested parens in first arg", "[exprtk_extract]")
     REQUIRE(r.size() == 1);
     CHECK(r[0].id == "abc5");
 }
+
+// ── Input / config error cases ────────────────────────────────────────────────
+
+TEST_CASE("param_index exceeds actual argument count is silently skipped", "[exprtk_extract]")
+{
+    // 'getValue' receives one argument; requesting index 1 finds nothing.
+    auto r = extract_formula_ids(
+        "getValue('abc1')",
+        func_id_config{"getValue", 1});
+
+    CHECK(r.empty());
+}
+
+TEST_CASE("empty argument list with param_index 0 is silently skipped", "[exprtk_extract]")
+{
+    auto r = extract_formula_ids(
+        "getValue()",
+        func_id_config{"getValue", 0});
+
+    CHECK(r.empty());
+}
+
+TEST_CASE("float literal at target param_index is silently skipped", "[exprtk_extract]")
+{
+    auto r = extract_formula_ids(
+        "getValue(3.14)",
+        func_id_config{"getValue", 0});
+
+    CHECK(r.empty());
+}
+
+TEST_CASE("arithmetic expression at target param_index is silently skipped", "[exprtk_extract]")
+{
+    auto r = extract_formula_ids(
+        "getValue(a + b)",
+        func_id_config{"getValue", 0});
+
+    CHECK(r.empty());
+}
+
+TEST_CASE("variable symbol at target param_index is silently skipped", "[exprtk_extract]")
+{
+    // A bare identifier is not a string literal.
+    auto r = extract_formula_ids(
+        "getValue(myVar)",
+        func_id_config{"getValue", 0});
+
+    CHECK(r.empty());
+}
+
+TEST_CASE("param_index 2 when call has only two arguments is silently skipped", "[exprtk_extract]")
+{
+    auto r = extract_formula_ids(
+        "getValue('a', 'b')",
+        func_id_config{"getValue", 2});
+
+    CHECK(r.empty());
+}
+
+TEST_CASE("non-string at param_index 0 does not spill to string at param_index 1", "[exprtk_extract]")
+{
+    // Config targets index 0, which is numeric. The string at index 1 must NOT
+    // be captured, even though a string exists in the call.
+    auto r = extract_formula_ids(
+        "getTaggedValue(42, 'should_not_match')",
+        func_id_config{"getTaggedValue", 0});
+
+    CHECK(r.empty());
+}
+
+TEST_CASE("empty string literal is extracted as an empty id", "[exprtk_extract]")
+{
+    auto r = extract_formula_ids(
+        "getValue('')",
+        func_id_config{"getValue", 0});
+
+    REQUIRE(r.size() == 1);
+    CHECK(r[0].func_name == "getValue");
+    CHECK(r[0].id.empty());
+}
+
+TEST_CASE("formula with only whitespace returns empty result", "[exprtk_extract]")
+{
+    auto r = extract_formula_ids(
+        "   \t\n  ",
+        func_id_config{"getValue", 0});
+
+    CHECK(r.empty());
+}
+
+TEST_CASE("formula that is only a line comment returns empty result", "[exprtk_extract]")
+{
+    auto r = extract_formula_ids(
+        "// getValue('commented')",
+        func_id_config{"getValue", 0});
+
+    CHECK(r.empty());
+}
+
+TEST_CASE("formula that is only a block comment returns empty result", "[exprtk_extract]")
+{
+    auto r = extract_formula_ids(
+        "/* getValue('commented') */",
+        func_id_config{"getValue", 0});
+
+    CHECK(r.empty());
+}
+
+TEST_CASE("function name used as prefix of longer identifier is not matched", "[exprtk_extract]")
+{
+    // 'getValueX' is a distinct symbol; it must not match a config for 'getValue'.
+    auto r = extract_formula_ids(
+        "getValueX('abc1')",
+        func_id_config{"getValue", 0});
+
+    CHECK(r.empty());
+}
+
+TEST_CASE("matching is case-sensitive: GetValue does not match getValue config", "[exprtk_extract]")
+{
+    auto r = extract_formula_ids(
+        "GetValue('abc1')",
+        func_id_config{"getValue", 0});
+
+    CHECK(r.empty());
+}
+
+TEST_CASE("whitespace inside argument list does not affect extraction", "[exprtk_extract]")
+{
+    auto r = extract_formula_ids(
+        "getValue( 'abc1' )",
+        func_id_config{"getValue", 0});
+
+    REQUIRE(r.size() == 1);
+    CHECK(r[0].id == "abc1");
+}
+
+TEST_CASE("duplicate configs with same name: first config wins, call counted once", "[exprtk_extract]")
+{
+    // The inner config search breaks on the first matching entry, so each
+    // call is attributed to exactly one config regardless of duplicates.
+    auto r = extract_formula_ids(
+        "getValue('abc1')",
+        func_id_config{"getValue", 0},
+        func_id_config{"getValue", 0});
+
+    REQUIRE(r.size() == 1);
+    CHECK(r[0].id == "abc1");
+}
+
+TEST_CASE("unclosed call paren: id already captured before EOF is returned", "[exprtk_extract]")
+{
+    // The string literal is captured before the inner loop exits on EOF,
+    // so the result is still produced even without the closing ')'.
+    auto r = extract_formula_ids(
+        "getValue('abc1'",
+        func_id_config{"getValue", 0});
+
+    REQUIRE(r.size() == 1);
+    CHECK(r[0].id == "abc1");
+}
+
+TEST_CASE("multiple configs: later config does not re-match an already-consumed call", "[exprtk_extract]")
+{
+    // First config matches 'getValue'; second config also names 'getValue' but
+    // with a different param_index. Because the first match wins and the scanner
+    // advances past the entire call, index 1 is never captured.
+    auto r = extract_formula_ids(
+        "getValue('first', 'second')",
+        func_id_config{"getValue", 0},
+        func_id_config{"getValue", 1});
+
+    REQUIRE(r.size() == 1);
+    CHECK(r[0].id == "first");
+}

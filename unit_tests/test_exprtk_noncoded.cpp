@@ -250,3 +250,117 @@ TEST_CASE("begin and end produce the correct raw substring", "[exprtk_noncoded]"
     // Verify half-open semantics: end - begin == length of raw token.
     CHECK(r[0].end - r[0].begin == std::string_view("'hello'").size());
 }
+
+// ── Edge / error cases ────────────────────────────────────────────────────────
+
+TEST_CASE("empty string literal '' is a string_literal span of length 2", "[exprtk_noncoded]")
+{
+    const std::string_view f = "''";
+    auto r = find_noncoded_spans(f);
+    REQUIRE(r.size() == 1);
+    CHECK(r[0].kind  == noncoded_kind::string_literal);
+    CHECK(r[0].begin == 0);
+    CHECK(r[0].end   == 2);
+    CHECK(raw(f, r[0]) == "''");
+}
+
+TEST_CASE("two adjacent string literals produce two separate spans", "[exprtk_noncoded]")
+{
+    const std::string_view f = "'a''b'";
+    auto r = find_noncoded_spans(f);
+    REQUIRE(r.size() == 2);
+    CHECK(r[0].kind == noncoded_kind::string_literal);
+    CHECK(raw(f, r[0]) == "'a'");
+    CHECK(r[1].kind == noncoded_kind::string_literal);
+    CHECK(raw(f, r[1]) == "'b'");
+}
+
+TEST_CASE("lone single-quote is an unterminated string spanning to end of input", "[exprtk_noncoded]")
+{
+    const std::string_view f = "'";
+    auto r = find_noncoded_spans(f);
+    REQUIRE(r.size() == 1);
+    CHECK(r[0].kind  == noncoded_kind::string_literal);
+    CHECK(r[0].begin == 0);
+    CHECK(r[0].end   == 1);
+}
+
+TEST_CASE("lone # with no trailing newline is a line_comment span consuming entire input", "[exprtk_noncoded]")
+{
+    const std::string_view f = "#";
+    auto r = find_noncoded_spans(f);
+    REQUIRE(r.size() == 1);
+    CHECK(r[0].kind  == noncoded_kind::line_comment);
+    CHECK(r[0].begin == 0);
+    CHECK(r[0].end   == 1);
+}
+
+TEST_CASE("formula with only whitespace yields no spans", "[exprtk_noncoded]")
+{
+    auto r = find_noncoded_spans("   \t\n  ");
+    CHECK(r.empty());
+}
+
+TEST_CASE("formula with only a newline yields no spans", "[exprtk_noncoded]")
+{
+    auto r = find_noncoded_spans("\n");
+    CHECK(r.empty());
+}
+
+TEST_CASE("doc-style block comment /** ... **/ is reported as block_comment", "[exprtk_noncoded]")
+{
+    // The first '*/' sequence terminates the comment; the leading '**' is fine.
+    const std::string_view f = "/** doc-style **/";
+    auto r = find_noncoded_spans(f);
+    REQUIRE(r.size() == 1);
+    CHECK(r[0].kind  == noncoded_kind::block_comment);
+    CHECK(r[0].begin == 0);
+    CHECK(r[0].end   == f.size());
+    CHECK(raw(f, r[0]) == "/** doc-style **/");
+}
+
+TEST_CASE("/* with no closing */ is consumed to end of input", "[exprtk_noncoded]")
+{
+    // Only the opening delimiter is present; end must equal formula.size().
+    const std::string_view f = "/*";
+    auto r = find_noncoded_spans(f);
+    REQUIRE(r.size() == 1);
+    CHECK(r[0].kind  == noncoded_kind::block_comment);
+    CHECK(r[0].begin == 0);
+    CHECK(r[0].end   == 2);
+}
+
+TEST_CASE("block comment immediately followed by string literal produces two spans", "[exprtk_noncoded]")
+{
+    const std::string_view f = "/* c */'str'";
+    auto r = find_noncoded_spans(f);
+    REQUIRE(r.size() == 2);
+    CHECK(r[0].kind == noncoded_kind::block_comment);
+    CHECK(raw(f, r[0]) == "/* c */");
+    CHECK(r[1].kind == noncoded_kind::string_literal);
+    CHECK(raw(f, r[1]) == "'str'");
+}
+
+TEST_CASE("// line comment with no content beyond markers yields minimal span", "[exprtk_noncoded]")
+{
+    // '//' at end of input — no newline, no additional text.
+    const std::string_view f = "//";
+    auto r = find_noncoded_spans(f);
+    REQUIRE(r.size() == 1);
+    CHECK(r[0].kind  == noncoded_kind::line_comment);
+    CHECK(r[0].begin == 0);
+    CHECK(r[0].end   == 2);
+    CHECK(raw(f, r[0]) == "//");
+}
+
+TEST_CASE("string literal with only a backslash escape is handled", "[exprtk_noncoded]")
+{
+    // '\n' — the backslash escape consumes two characters before the closing quote.
+    const std::string_view f = "'\\n'";
+    auto r = find_noncoded_spans(f);
+    REQUIRE(r.size() == 1);
+    CHECK(r[0].kind  == noncoded_kind::string_literal);
+    CHECK(r[0].begin == 0);
+    CHECK(r[0].end   == f.size());
+    CHECK(raw(f, r[0]) == "'\\n'");
+}

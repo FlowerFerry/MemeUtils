@@ -19,7 +19,7 @@
 namespace mmupp {
 namespace net {
 
-    //! @deprecated
+    //! @deprecated This struct is deprecated
     enum class address_type: uint8_t
     {
         none           = 0x00,
@@ -29,7 +29,7 @@ namespace net {
         domain         = 0x04
     };
 
-    //! @deprecated
+    //! @deprecated This struct is deprecated
     struct address 
     {
         using string_type = memepp::string;
