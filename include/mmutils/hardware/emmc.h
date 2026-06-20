@@ -10,7 +10,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif // __cppplusplus
+#endif // __cplusplus
 
 //! @struct mmu_emmc_info
 //! @brief 用于存储 eMMC 信息的数据结构。
@@ -190,6 +190,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
         }
     }
 
+    return 0;
 #endif
     return -1;
 }

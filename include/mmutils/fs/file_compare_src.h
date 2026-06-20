@@ -56,6 +56,12 @@ inline int mmu_file_compare(const char *file1_path, intptr_t _s1len, const char 
         char buf1[512];
         char buf2[512];
 
+        if (len1 == 0) {
+            fclose(fp1);
+            fclose(fp2);
+            return 1;
+        }
+
         if (len1 <= prelen)
             prelen = len1; 
         len1 -= prelen;

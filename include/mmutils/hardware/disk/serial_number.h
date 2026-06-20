@@ -14,7 +14,7 @@
 #include <sys/ioctl.h>
 #endif // !MG_OS__LINUX_AVAIL
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
 
@@ -106,7 +106,7 @@ MG_CAPI_INLINE mmstrstk_t mmuhw_get_disk_serial_number(const char* _disk_path, s
     return s;
 }
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 }
 #endif // __cplusplus
 

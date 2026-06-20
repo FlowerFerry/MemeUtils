@@ -60,15 +60,12 @@ TEST_CASE("simple_tag parse lang-Script only (no region)", "[locale][tag]") {
     CHECK(tag.region().size() == 0);
 }
 
-TEST_CASE("simple_tag lang-REGION without script: region is not captured (parser limitation)", "[locale][tag]") {
-    // The parser places 2-char region detection at part_index==2 only.
-    // At part_index==1, a non-4-char segment is silently skipped (via `continue`),
-    // so "US" in "en-US" is never captured into region_.
+TEST_CASE("simple_tag lang-REGION without script: region is captured at part_index==1", "[locale][tag]") {
     auto tag = parse("en-US");
     REQUIRE(tag.valid());
     CHECK(to_str(tag.language()) == "en");
     CHECK(tag.script().size() == 0);
-    CHECK(tag.region().size() == 0);
+    CHECK(to_str(tag.region()) == "US");
 }
 
 // ---------------------------------------------------------------------------
