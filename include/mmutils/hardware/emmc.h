@@ -8,6 +8,12 @@
 #include <mego/predef/symbol/inline.h>
 #include <mego/util/math.h>
 
+#if MEGO_OS__LINUX__AVAILABLE
+# include <dirent.h>
+# include <sys/stat.h>
+# include <limits.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -39,6 +45,7 @@ struct mmu_emmc_info
 
 MG_CAPI_INLINE void mmu_emmc_info_init(struct mmu_emmc_info* _info)
 {
+    _info->st_size = sizeof(struct mmu_emmc_info);
     mmstrstk_init(&_info->cid);
     mmstrstk_init(&_info->csd);
     mmstrstk_init(&_info->oemid);
@@ -46,6 +53,7 @@ MG_CAPI_INLINE void mmu_emmc_info_init(struct mmu_emmc_info* _info)
     mmstrstk_init(&_info->serial);
     mmstrstk_init(&_info->manfid);
     mmstrstk_init(&_info->date);
+    mmstrstk_init(&_info->type);
 
     _info->removable = -1;
 }
@@ -59,6 +67,7 @@ MG_CAPI_INLINE void mmu_emmc_info_uninit(struct mmu_emmc_info* _info)
     mmstrstk_uninit(&_info->serial);
     mmstrstk_uninit(&_info->manfid);
     mmstrstk_uninit(&_info->date);
+    mmstrstk_uninit(&_info->type);
 }
 
 //! @brief 获取指定设备的 eMMC 信息。
@@ -94,6 +103,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
     // remove '\n'
     if (buf[len - 1] == '\n') {
         buf[len - 1] = '\0';
+        --len;
     }
     
     mmstrstk_assign_by_utf8(&_info->cid, buf, len);
@@ -107,6 +117,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
         if (len > 0 && len < sizeof(buf)) {
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
+                --len;
             }
             mmstrstk_assign_by_utf8(&_info->csd, buf, len);
         }
@@ -120,6 +131,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
         if (len > 0 && len < sizeof(buf)) {
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
+                --len;
             }
             mmstrstk_assign_by_utf8(&_info->oemid, buf, len);
         }
@@ -133,6 +145,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
         if (len > 0 && len < sizeof(buf)) {
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
+                --len;
             }
             mmstrstk_assign_by_utf8(&_info->name, buf, len);
         }
@@ -146,6 +159,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
         if (len > 0 && len < sizeof(buf)) {
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
+                --len;
             }
             mmstrstk_assign_by_utf8(&_info->serial, buf, len);
         }
@@ -159,6 +173,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
         if (len > 0 && len < sizeof(buf)) {
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
+                --len;
             }
             mmstrstk_assign_by_utf8(&_info->manfid, buf, len);
         }
@@ -172,6 +187,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
         if (len > 0 && len < sizeof(buf)) {
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
+                --len;
             }
             mmstrstk_assign_by_utf8(&_info->date, buf, len);
         }
@@ -185,6 +201,7 @@ MG_CAPI_INLINE int mmu_get_emmc_info(const char* _device_name, size_t _slen, str
         if (len > 0 && len < sizeof(buf)) {
             if (buf[len - 1] == '\n') {
                 buf[len - 1] = '\0';
+                --len;
             }
             mmstrstk_assign_by_utf8(&_info->type, buf, len);
         }
@@ -204,6 +221,8 @@ MG_CAPI_INLINE int mmu_get_emmc_info_list(struct mmu_emmc_info* _info, size_t* _
 {
 #if MEGO_OS__LINUX__AVAILABLE
     struct mmu_emmc_info* info = _info;
+    size_t count = 0;
+    size_t max_count = (_info && _size) ? *_size : 0;
     struct dirent* ent = NULL;
     DIR* dir = opendir("/sys/class/block");
     if (dir == NULL)
@@ -237,8 +256,10 @@ MG_CAPI_INLINE int mmu_get_emmc_info_list(struct mmu_emmc_info* _info, size_t* _
                 ++(*_size);
         }
         else {
-            mmu_get_emmc_info(ent->d_name, strlen(ent->d_name), info);
-            ++info;
+            if (count >= max_count)
+                break;
+            mmu_get_emmc_info(ent->d_name, strlen(ent->d_name), &info[count]);
+            ++count;
         }
     }
     

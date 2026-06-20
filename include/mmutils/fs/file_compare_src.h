@@ -42,7 +42,7 @@ inline int mmu_file_compare(const char *file1_path, intptr_t _s1len, const char 
     if (len1 != len2) {
         fclose(fp1);
         fclose(fp2);
-        return 1;
+        return 0;
     }
 
     if (len1 > 1024 * 1024) {
@@ -114,15 +114,17 @@ inline int mmu_file_compare_by_mmap(FILE* _fp1, FILE* _fp2)
     HANDLE h2 = (HANDLE)_get_osfhandle(_fileno(_fp2));
     mmint_t len1 = 0;
     mmint_t len2 = 0;
-    mmint_t prelen = 1024 * 1024;
 
     if (h1 == INVALID_HANDLE_VALUE || h2 == INVALID_HANDLE_VALUE)
         return -1;
 
-    len1 = GetFileSize(h1, NULL);
-    len2 = GetFileSize(h2, NULL);
-    if (len1 == INVALID_FILE_SIZE || len2 == INVALID_FILE_SIZE)
-        return -1;
+    {
+        LARGE_INTEGER li1, li2;
+        if (!GetFileSizeEx(h1, &li1) || !GetFileSizeEx(h2, &li2))
+            return -1;
+        len1 = li1.QuadPart;
+        len2 = li2.QuadPart;
+    }
 
     if (len1 != len2)
         return 0;
@@ -133,6 +135,7 @@ inline int mmu_file_compare_by_mmap(FILE* _fp1, FILE* _fp2)
     do {
         mmint_t offset = 0;
         mmint_t block_size = 1024 * 1024;
+        mmint_t prelen = 1024 * 1024;
 
         if (len1 <= prelen)
             prelen = len1;
@@ -189,7 +192,6 @@ inline int mmu_file_compare_by_mmap(FILE* _fp1, FILE* _fp2)
     int fd2 = fileno(_fp2);
     mmint_t len1 = 0;
     mmint_t len2 = 0;
-    mmint_t prelen = 1024 * 1024;
     struct stat st;
 
     if (fstat(fd1, &st) != 0)
@@ -209,6 +211,7 @@ inline int mmu_file_compare_by_mmap(FILE* _fp1, FILE* _fp2)
     do {
         mmint_t offset = 0;
         mmint_t block_size = 1024 * 1024;
+        mmint_t prelen = 1024 * 1024;
 
         if (len1 <= prelen)
             prelen = len1;

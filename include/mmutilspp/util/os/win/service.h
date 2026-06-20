@@ -817,7 +817,7 @@ inline void service::__on_win_svc_main(DWORD _dwArgc, LPWSTR *_lpszArgv)
     auto stop_thread_cleanup = mgpp::util::scope_cleanup__create([&]() 
     {
         if (locker.owns_lock()) {
-            locker.lock();
+            locker.unlock();
         }
         if (stop_thread_.joinable()) {
             stop_thread_.join();
@@ -991,11 +991,23 @@ inline LONG service::__on_unhandled_exception_handler(EXCEPTION_POINTERS *_lpExc
         return EXCEPTION_EXECUTE_HANDLER;
     }
 
+    std::unique_lock locker{mutex_, std::try_to_lock};
+    if (!locker.owns_lock()) {
+        // Crashing thread may hold the mutex; skip dump to avoid deadlock.
+        return EXCEPTION_EXECUTE_HANDLER;
+    }
+    auto svc_name = service_name_;
+    locker.unlock();
+
+    if (svc_name.empty()) {
+        return EXCEPTION_EXECUTE_HANDLER;
+    }
+
      auto dmp_path = 
         mm_into<memepp::native_string>(
             mmupp::fs::relative_with_program_path(
                 memepp::c_format(256, "%s.%lld.dmp", 
-                    mm_from(service_name_).data(), (mgu_time_t)time(0))));
+                    mm_from(svc_name).data(), (mgu_time_t)time(0))));
 
     HANDLE hFile = CreateFileW(
         dmp_path.data(),

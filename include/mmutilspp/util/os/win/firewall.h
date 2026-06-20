@@ -48,7 +48,7 @@ struct firewall
             return { MGEC__ERR };
         }
 
-        return 0;
+        return {};
 #else
         return { MGEC__OPNOTSUPP };
 #endif
@@ -133,26 +133,37 @@ struct firewall
         auto filename = mm_into<memepp::native_string>(_filename);
         bstrRuleApplication = SysAllocString(filename.c_str());
 
-		hr = pFwRule->put_Name(bstrRuleName);
-//		hr = pFwRule->put_Description(bstrRuleDescription);
-		hr = pFwRule->put_ApplicationName(bstrRuleApplication);
-//		hr = pFwRule->put_ServiceName(bstrRuleService);
-		hr = pFwRule->put_Protocol(NET_FW_IP_PROTOCOL_ANY);
-//		hr = pFwRule->put_LocalPorts(NULL);
-//		hr = pFwRule->put_Grouping(bstrRuleGroup);
-		hr = pFwRule->put_Action(NET_FW_ACTION_ALLOW);
-		hr = pFwRule->put_Enabled(VARIANT_TRUE);
-		hr = pFwRule->put_Profiles(NET_FW_PROFILE2_PUBLIC | NET_FW_PROFILE2_PRIVATE | NET_FW_PROFILE2_DOMAIN);
-		if (FAILED(hr)) {
-			pFwRule->put_Profiles(CurrentProfilesBitMask);
-		}
-
-		hr = pFwRules->Add(pFwRule);
-		if (FAILED(hr)) {
+        hr = pFwRule->put_Name(bstrRuleName);
+        if (FAILED(hr)) {
             return { MGEC__ERR };
-		}
+        }
+        hr = pFwRule->put_ApplicationName(bstrRuleApplication);
+        if (FAILED(hr)) {
+            return { MGEC__ERR };
+        }
+        hr = pFwRule->put_Protocol(NET_FW_IP_PROTOCOL_ANY);
+        if (FAILED(hr)) {
+            return { MGEC__ERR };
+        }
+        hr = pFwRule->put_Action(NET_FW_ACTION_ALLOW);
+        if (FAILED(hr)) {
+            return { MGEC__ERR };
+        }
+        hr = pFwRule->put_Enabled(VARIANT_TRUE);
+        if (FAILED(hr)) {
+            return { MGEC__ERR };
+        }
+        hr = pFwRule->put_Profiles(NET_FW_PROFILE2_PUBLIC | NET_FW_PROFILE2_PRIVATE | NET_FW_PROFILE2_DOMAIN);
+        if (FAILED(hr)) {
+            pFwRule->put_Profiles(CurrentProfilesBitMask);
+        }
+
+        hr = pFwRules->Add(pFwRule);
+        if (FAILED(hr)) {
+            return { MGEC__ERR };
+        }
 		
-		return 0;
+        return {};
 #else
         return { MGEC__OPNOTSUPP };
 #endif
