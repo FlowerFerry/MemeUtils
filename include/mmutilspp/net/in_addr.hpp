@@ -13,6 +13,7 @@
 #include <memepp/string_view.hpp>
 
 #include <string>
+#include <cstring>
 
 namespace mmupp {
 namespace net {

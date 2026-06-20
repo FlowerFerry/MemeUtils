@@ -1129,10 +1129,12 @@ inline mgpp::err service::__on_start_pending()
         worker.join();
     }
 
-    locker.lock();
-    __win_svc_report_status(
-        service_status_handle_, SERVICE_RUNNING, NO_ERROR, 0, service_status_);
-    locker.unlock();
+    if (!result) {
+        locker.lock();
+        __win_svc_report_status(
+            service_status_handle_, SERVICE_RUNNING, NO_ERROR, 0, service_status_);
+        locker.unlock();
+    }
 
     return result;
 }

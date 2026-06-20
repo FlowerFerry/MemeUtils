@@ -41,13 +41,19 @@ public:
     inline void submit(const _Ty& item)
     {
         queue_.enqueue(item);
-        task_avail_cv_.notify_one();
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            task_avail_cv_.notify_one();
+        }
     }
 
     inline void submit(_Ty&& item)
     {
         queue_.enqueue(std::forward<_Ty>(item));
-        task_avail_cv_.notify_one();
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            task_avail_cv_.notify_one();
+        }
     }
 
     inline void reset(concurrency_t _thread_count = 0)

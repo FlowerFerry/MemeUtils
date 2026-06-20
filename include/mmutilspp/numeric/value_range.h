@@ -5,7 +5,7 @@
 #include <limits>
 
 #ifdef min
-#define MAX_ORIGINAL min
+#define MIN_ORIGINAL min
 #undef min
 #endif
 
