@@ -3,6 +3,7 @@
 #define MMUPP_NUMERIC_VALUE_RANGE_H_INCLUDED
 
 #include <limits>
+#include <type_traits>
 
 #ifdef min
 #define MIN_ORIGINAL min
@@ -93,11 +94,11 @@ public:
     bool operator==(const value_range<T>& range) const noexcept { return min() == range.min() && max() == range.max(); }
     bool operator!=(const value_range<T>& range) const noexcept { return !(*this == range); }
 
-    bool operator<(const value_range<T>& range) const noexcept { return max() - min() < range.max() - range.min(); }
-    bool operator>(const value_range<T>& range) const noexcept { return max() - min() > range.max() - range.min(); }
+    bool operator<(const value_range<T>& range) const noexcept { return range_size() < range.range_size(); }
+    bool operator>(const value_range<T>& range) const noexcept { return range_size() > range.range_size(); }
 
-    bool operator<=(const value_range<T>& range) const noexcept { return max() - min() <= range.max() - range.min(); }
-    bool operator>=(const value_range<T>& range) const noexcept { return max() - min() >= range.max() - range.min(); }
+    bool operator<=(const value_range<T>& range) const noexcept { return range_size() <= range.range_size(); }
+    bool operator>=(const value_range<T>& range) const noexcept { return range_size() >= range.range_size(); }
 
     value_range<T> operator+(const value_range<T>& range) const noexcept { return value_range<T>(min() + range.min(), max() + range.max()); }
     value_range<T> operator-(const value_range<T>& range) const noexcept { return value_range<T>(min() - range.min(), max() - range.max()); }
@@ -118,6 +119,17 @@ public:
     }
 
 private:
+    template<typename U = T>
+    static constexpr auto range_diff(T _max, T _min) noexcept {
+        if constexpr (std::is_integral_v<U>) {
+            return std::make_unsigned_t<U>(_max) - std::make_unsigned_t<U>(_min);
+        } else {
+            return _max - _min;
+        }
+    }
+
+    constexpr auto range_size() const noexcept { return range_diff(max_, min_); }
+
     T min_;
     T max_;
 };

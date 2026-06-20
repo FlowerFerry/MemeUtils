@@ -67,7 +67,10 @@ public:
         threads_count_ = determine_thread_count(_thread_count);
         threads_ = std::make_unique<std::thread[]>(threads_count_);
         
-        paused_ = was_paused;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            paused_ = was_paused;
+        }
         create_threads();
     }
 

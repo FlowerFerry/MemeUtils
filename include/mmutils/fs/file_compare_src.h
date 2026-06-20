@@ -5,7 +5,7 @@
 #include "file_compare_def.h"
 #include <string.h>
 
-#include "../io/file.h"
+#include <mego/util/std/file.h>
 
 #if MEGO_OS__WINDOWS__AVAILABLE
 #else
@@ -23,11 +23,11 @@ extern "C" {
 inline int mmu_file_compare(const char *file1_path, intptr_t _s1len, const char *file2_path, intptr_t _s2len)
 {
     FILE* fp2 = NULL;
-    FILE* fp1 = mmu_fopen(file1_path, _s1len, "rb", -1);
+    FILE* fp1 = mgu_fopen(file1_path, _s1len, "rb", -1);
     if (!fp1)
         return -1;
     
-    fp2 = mmu_fopen(file2_path, _s2len, "rb", -1);
+    fp2 = mgu_fopen(file2_path, _s2len, "rb", -1);
     if (!fp2) {
         fclose(fp1);
         return -1;
