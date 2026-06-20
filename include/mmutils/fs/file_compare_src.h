@@ -69,8 +69,12 @@ inline int mmu_file_compare(const char *file1_path, intptr_t _s1len, const char 
         fseek(fp1, len1, SEEK_SET);
         fseek(fp2, len1, SEEK_SET);
 
-        fread(buf1, 1, prelen, fp1);
-        fread(buf2, 1, prelen, fp2);
+        if (fread(buf1, 1, prelen, fp1) != (size_t)prelen ||
+            fread(buf2, 1, prelen, fp2) != (size_t)prelen) {
+            fclose(fp1);
+            fclose(fp2);
+            return -1;
+        }
 
         if (memcmp(buf1, buf2, prelen) != 0) {
             fclose(fp1);
@@ -84,8 +88,12 @@ inline int mmu_file_compare(const char *file1_path, intptr_t _s1len, const char 
         while (len1 > 0) {
             mmint_t readlen = len1 > 512 ? 512 : len1;
 
-            fread(buf1, 1, readlen, fp1);
-            fread(buf2, 1, readlen, fp2);
+            if (fread(buf1, 1, readlen, fp1) != (size_t)readlen ||
+                fread(buf2, 1, readlen, fp2) != (size_t)readlen) {
+                fclose(fp1);
+                fclose(fp2);
+                return -1;
+            }
 
             if (memcmp(buf1, buf2, readlen) != 0) {
                 fclose(fp1);

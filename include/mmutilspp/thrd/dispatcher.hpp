@@ -131,8 +131,6 @@ private:
                     callback_(std::move(item));
                 }
                 catch (...) {
-                    --tasks_running_;
-                    throw;
                 }
                 --tasks_running_;
             } 

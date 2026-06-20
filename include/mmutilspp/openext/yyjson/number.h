@@ -11,8 +11,11 @@ namespace openext {
     template<typename T>
     inline T get_num_with_default(yyjson_val *_val, const char* _key, mmint_t _slen, T _default) 
     {
-        if (_slen < 0) 
+        if (_slen < 0) {
+            if (!_key)
+                return _default;
             _slen = strlen(_key);
+        }
         yyjson_val *v = yyjson_obj_getn(_val, _key, static_cast<size_t>(_slen));
         if (v == nullptr) 
             return _default;

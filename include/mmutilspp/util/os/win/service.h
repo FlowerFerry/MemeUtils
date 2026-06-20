@@ -822,7 +822,10 @@ inline void service::__on_win_svc_main(DWORD _dwArgc, LPWSTR *_lpszArgv)
         if (stop_thread_.joinable()) {
             stop_thread_.join();
         }
-        stop_future_ = std::future<mgpp::err>{}; // Clear the future
+        {
+            std::unique_lock lk{mutex_, std::try_to_lock};
+            stop_future_ = std::future<mgpp::err>{}; // Clear the future
+        }
     });
 
 	try {
@@ -854,8 +857,15 @@ inline void service::__on_win_svc_main(DWORD _dwArgc, LPWSTR *_lpszArgv)
 		return;
 	}
 
-    if (stop_future_.valid()) {
-        result = stop_future_.get(); // Wait for stop request to complete
+    std::future<mgpp::err> fut;
+    {
+        std::unique_lock lk{mutex_};
+        if (stop_future_.valid()) {
+            fut = std::move(stop_future_);
+        }
+    }
+    if (fut.valid()) {
+        result = fut.get(); // Wait for stop request to complete
     }
     if (result) {
         report_event(service_name, event_level_e::error, 
@@ -965,10 +975,13 @@ inline DWORD service::__on_win_svc_ctrl_handler(
                 return mgpp::err{ MGEC__ERR, "Exception in stop pending callback" };
             }
         } };
-        stop_future_ = stop_task.get_future();
-        stop_thread_ = std::thread([task = std::move(stop_task)]() mutable {
-            task();
-        });
+        {
+            std::unique_lock lk{mutex_};
+            stop_future_ = stop_task.get_future();
+            stop_thread_ = std::thread([task = std::move(stop_task)]() mutable {
+                task();
+            });
+        }
 
 		return NO_ERROR;
 

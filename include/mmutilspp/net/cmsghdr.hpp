@@ -27,14 +27,14 @@ namespace net {
         constexpr bool is_null() const noexcept { return ptr_ == nullptr; }
 
 #if MG_OS__LINUX_AVAIL
-        void self_next(struct msghdr * _msg) noexcept { ptr_ = CMSG_NXTHDR(msg, ptr_); }
-        cmsghdr_ptr next(struct msghdr * _msg) const noexcept { return CMSG_NXTHDR(msg, ptr_); }
+        void self_next(struct msghdr * _msg) noexcept { ptr_ = CMSG_NXTHDR(_msg, ptr_); }
+        cmsghdr_ptr next(struct msghdr * _msg) const noexcept { return CMSG_NXTHDR(_msg, ptr_); }
         
         void* data() const noexcept { return CMSG_DATA(ptr_); }
 #endif
 #if MG_OS__WINDOWS_AVAIL
-        void self_next(WSAMSG * _msg) noexcept { ptr_ = CMSG_NXTHDR(msg, ptr_); }
-        cmsghdr_ptr next(WSAMSG * _msg) const noexcept { return CMSG_NXTHDR(msg, ptr_); }
+        void self_next(WSAMSG * _msg) noexcept { ptr_ = CMSG_NXTHDR(_msg, ptr_); }
+        cmsghdr_ptr next(WSAMSG * _msg) const noexcept { return CMSG_NXTHDR(_msg, ptr_); }
 
         void* data() const noexcept { return WSA_CMSG_DATA(ptr_); }
 #endif

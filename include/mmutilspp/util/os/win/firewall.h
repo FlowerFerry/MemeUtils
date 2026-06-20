@@ -171,7 +171,7 @@ struct firewall
 
 private:
     com_env comenv_;
-    INetFwPolicy2* pNetFwPolicy2_;
+    INetFwPolicy2* pNetFwPolicy2_ = nullptr;
 };
 
 }

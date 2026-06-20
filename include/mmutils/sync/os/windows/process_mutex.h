@@ -33,10 +33,7 @@ static inline int mmu_pmtx__init(mmu_pmtx_t *_mtx, const char *_name, size_t _na
     if (_name_len > MAX_PATH - 8) {
         return -1;
     }
-    if (strncat(full_name, _name, MGU_MATH__MIN(_name_len, sizeof(full_name) - 1 - 8)) == NULL) 
-    {
-        return -1;
-    }
+    strncat(full_name, _name, MGU_MATH__MIN(_name_len, sizeof(full_name) - 1 - 8));
     full_name[sizeof(full_name) - 1] = '\0';
 
     _mtx->handle = CreateMutexA(NULL, FALSE, full_name);
