@@ -139,6 +139,19 @@ private:
     memepp::rune script_;
     memepp::rune region_;
     bool valid_ = false;
+
+    bool operator==(const simple_tag& _other) const noexcept
+    {
+        return language_ == _other.language_
+            && script_ == _other.script_
+            && region_ == _other.region_
+            && valid_ == _other.valid_;
+    }
+
+    bool operator!=(const simple_tag& _other) const noexcept
+    {
+        return !(*this == _other);
+    }
 }; 
 
 }

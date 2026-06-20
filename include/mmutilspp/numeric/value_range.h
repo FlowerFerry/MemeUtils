@@ -59,7 +59,10 @@ public:
 
     void set_max(T max) noexcept { 
         if (invalid()) {
-            min_ = std::numeric_limits<T>::min();
+            if constexpr (std::is_floating_point_v<T>)
+                min_ = std::numeric_limits<T>::lowest();
+            else
+                min_ = std::numeric_limits<T>::min();
         }
         max_ = max; 
         if (min_ > max_) {

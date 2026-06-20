@@ -258,8 +258,8 @@ MG_CAPI_INLINE int mmu_get_emmc_info_list(struct mmu_emmc_info* _info, size_t* _
         else {
             if (count >= max_count)
                 break;
-            mmu_get_emmc_info(ent->d_name, strlen(ent->d_name), &info[count]);
-            ++count;
+            if (mmu_get_emmc_info(ent->d_name, strlen(ent->d_name), &info[count]) == 0)
+                ++count;
         }
     }
     

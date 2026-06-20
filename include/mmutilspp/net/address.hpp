@@ -92,6 +92,7 @@ namespace net {
 
         inline bool to_sockaddr_storage(uint16_t _port, sockaddr_storage* _out) const noexcept
         {
+            memset(_out, 0, sizeof(sockaddr_storage));
             if (type_ == address_type::ipv4) 
             {
                 sockaddr_in* addr = reinterpret_cast<sockaddr_in*>(_out);
@@ -175,13 +176,25 @@ namespace net {
             switch (type()) {
             case address_type::ipv6_with_ipv4:
             {
-                if (_other.type() == address_type::ipv4)
-                    return data_.contains(_other.data_);
+                if (_other.type() == address_type::ipv4) {
+                    auto colon_pos = data_.rfind(':');
+                    if (colon_pos != memepp::string::npos) {
+                        auto ipv4 = data_.substr(colon_pos + 1);
+                        if (ipv4 == _other.data_)
+                            return true;
+                    }
+                }
             } break;
             case address_type::ipv4:
             {
-                if (_other.type() == address_type::ipv6_with_ipv4)
-                    return _other.data_.contains(data_);
+                if (_other.type() == address_type::ipv6_with_ipv4) {
+                    auto colon_pos = _other.data_.rfind(':');
+                    if (colon_pos != memepp::string::npos) {
+                        auto ipv4 = _other.data_.substr(colon_pos + 1);
+                        if (ipv4 == data_)
+                            return true;
+                    }
+                }
             } break;
             default: 
                 break;

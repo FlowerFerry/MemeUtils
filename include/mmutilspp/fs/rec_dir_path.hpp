@@ -1,6 +1,6 @@
 ﻿
-#ifndef MMUPP_FS_REC_LOG_DIR_PATH_HPP_INCLUDED
-#define MMUPP_FS_REC_LOG_DIR_PATH_HPP_INCLUDED
+#ifndef MMUPP_FS_REC_DIR_PATH_HPP_INCLUDED
+#define MMUPP_FS_REC_DIR_PATH_HPP_INCLUDED
 
 #include <mego/util/get_exec_path.h>
 #include <mego/fs/dir.h>
@@ -146,4 +146,4 @@ inline memepp::string rec_writable_dir_path()
 }
 }
 
-#endif // !MMUPP_FS_REC_LOG_DIR_PATH_HPP_INCLUDED
+#endif // !MMUPP_FS_REC_DIR_PATH_HPP_INCLUDED
