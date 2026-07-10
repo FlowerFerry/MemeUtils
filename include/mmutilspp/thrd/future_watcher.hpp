@@ -362,7 +362,7 @@ namespace detail {
 // ── std::future ──────────────────────────────────────────────────────────────
 
 template <typename T, typename Rep, typename Period, typename Func>
-std::future_status wait_for(
+std::future_status future_wait_for(
     std::future<T>& fut,
     const std::chrono::duration<Rep, Period>& timeout_duration,
     Func&& condition)
@@ -376,7 +376,7 @@ std::future_status wait_for(
 }
 
 template <typename T, typename Clock, typename Duration, typename Func>
-std::future_status wait_until(
+std::future_status future_wait_until(
     std::future<T>& fut,
     const std::chrono::time_point<Clock, Duration>& timeout_time,
     Func&& condition)
@@ -394,7 +394,7 @@ std::future_status wait_until(
 // ── std::shared_future ───────────────────────────────────────────────────────
 
 template <typename T, typename Rep, typename Period, typename Func>
-std::future_status wait_for(
+std::future_status shared_future_wait_for(
     const std::shared_future<T>& fut,
     const std::chrono::duration<Rep, Period>& timeout_duration,
     Func&& condition)
@@ -408,7 +408,7 @@ std::future_status wait_for(
 }
 
 template <typename T, typename Clock, typename Duration, typename Func>
-std::future_status wait_until(
+std::future_status shared_future_wait_until(
     const std::shared_future<T>& fut,
     const std::chrono::time_point<Clock, Duration>& timeout_time,
     Func&& condition)

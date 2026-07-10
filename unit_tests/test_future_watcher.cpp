@@ -346,16 +346,16 @@ TEST_CASE("wait_until condition uses shared_status::should_cancel", "[future_wat
 // Free functions: conditional wait for std::future
 // ---------------------------------------------------------------------------
 
-TEST_CASE("free wait_for future condition true interrupts immediately", "[future_watcher]") {
+TEST_CASE("free future_wait_for condition true interrupts immediately", "[future_watcher]") {
     std::promise<int> p;
     auto fut = p.get_future();
 
-    auto s = mmupp::thrd::wait_for(fut, std::chrono::seconds(5),
+    auto s = mmupp::thrd::future_wait_for(fut, std::chrono::seconds(5),
                                    []() { return true; });
     CHECK(s == std::future_status::timeout);
 }
 
-TEST_CASE("free wait_for future fulfilled returns ready", "[future_watcher]") {
+TEST_CASE("free future_wait_for fulfilled returns ready", "[future_watcher]") {
     std::promise<int> p;
     auto fut = p.get_future();
     std::thread t([&p]() {
@@ -363,14 +363,14 @@ TEST_CASE("free wait_for future fulfilled returns ready", "[future_watcher]") {
         p.set_value(1);
     });
 
-    auto s = mmupp::thrd::wait_for(fut, std::chrono::seconds(5),
+    auto s = mmupp::thrd::future_wait_for(fut, std::chrono::seconds(5),
                                    []() { return false; });
     t.join();
     CHECK(s == std::future_status::ready);
     CHECK(fut.get() == 1);
 }
 
-TEST_CASE("free wait_for future condition flips true mid-wait", "[future_watcher]") {
+TEST_CASE("free future_wait_for condition flips true mid-wait", "[future_watcher]") {
     std::promise<int> p;
     auto fut = p.get_future();
     std::atomic<bool> flag{false};
@@ -380,7 +380,7 @@ TEST_CASE("free wait_for future condition flips true mid-wait", "[future_watcher
     });
 
     auto t0 = std::chrono::steady_clock::now();
-    auto s = mmupp::thrd::wait_for(fut, std::chrono::seconds(10),
+    auto s = mmupp::thrd::future_wait_for(fut, std::chrono::seconds(10),
                                    [&]() { return flag.load(); });
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t0).count();
@@ -391,12 +391,12 @@ TEST_CASE("free wait_for future condition flips true mid-wait", "[future_watcher
     CHECK(elapsed < 2000);
 }
 
-TEST_CASE("free wait_for future timeout returns timeout", "[future_watcher]") {
+TEST_CASE("free future_wait_for timeout returns timeout", "[future_watcher]") {
     std::promise<int> p;
     auto fut = p.get_future();
 
     auto t0 = std::chrono::steady_clock::now();
-    auto s = mmupp::thrd::wait_for(fut, std::chrono::milliseconds(100),
+    auto s = mmupp::thrd::future_wait_for(fut, std::chrono::milliseconds(100),
                                    []() { return false; });
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t0).count();
@@ -406,24 +406,24 @@ TEST_CASE("free wait_for future timeout returns timeout", "[future_watcher]") {
     CHECK(elapsed < 500);
 }
 
-TEST_CASE("free wait_for future invalid returns ready", "[future_watcher]") {
+TEST_CASE("free future_wait_for invalid returns ready", "[future_watcher]") {
     std::future<int> fut;
-    auto s = mmupp::thrd::wait_for(fut, std::chrono::seconds(10),
+    auto s = mmupp::thrd::future_wait_for(fut, std::chrono::seconds(10),
                                    []() { return false; });
     CHECK(s == std::future_status::ready);
 }
 
-TEST_CASE("free wait_until future condition true interrupts immediately", "[future_watcher]") {
+TEST_CASE("free future_wait_until condition true interrupts immediately", "[future_watcher]") {
     std::promise<int> p;
     auto fut = p.get_future();
 
-    auto s = mmupp::thrd::wait_until(
+    auto s = mmupp::thrd::future_wait_until(
         fut, std::chrono::steady_clock::now() + std::chrono::seconds(5),
         []() { return true; });
     CHECK(s == std::future_status::timeout);
 }
 
-TEST_CASE("free wait_until future fulfilled returns ready", "[future_watcher]") {
+TEST_CASE("free future_wait_until fulfilled returns ready", "[future_watcher]") {
     std::promise<int> p;
     auto fut = p.get_future();
     std::thread t([&p]() {
@@ -431,7 +431,7 @@ TEST_CASE("free wait_until future fulfilled returns ready", "[future_watcher]") 
         p.set_value(2);
     });
 
-    auto s = mmupp::thrd::wait_until(
+    auto s = mmupp::thrd::future_wait_until(
         fut, std::chrono::steady_clock::now() + std::chrono::seconds(5),
         []() { return false; });
     t.join();
@@ -439,12 +439,12 @@ TEST_CASE("free wait_until future fulfilled returns ready", "[future_watcher]") 
     CHECK(fut.get() == 2);
 }
 
-TEST_CASE("free wait_until future timeout_time returns timeout", "[future_watcher]") {
+TEST_CASE("free future_wait_until timeout_time returns timeout", "[future_watcher]") {
     std::promise<int> p;
     auto fut = p.get_future();
 
     auto t0 = std::chrono::steady_clock::now();
-    auto s = mmupp::thrd::wait_until(
+    auto s = mmupp::thrd::future_wait_until(
         fut, std::chrono::steady_clock::now() + std::chrono::milliseconds(100),
         []() { return false; });
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -455,9 +455,9 @@ TEST_CASE("free wait_until future timeout_time returns timeout", "[future_watche
     CHECK(elapsed < 500);
 }
 
-TEST_CASE("free wait_until future invalid returns ready", "[future_watcher]") {
+TEST_CASE("free future_wait_until invalid returns ready", "[future_watcher]") {
     std::future<int> fut;
-    auto s = mmupp::thrd::wait_until(
+    auto s = mmupp::thrd::future_wait_until(
         fut, std::chrono::steady_clock::now() + std::chrono::seconds(10),
         []() { return false; });
     CHECK(s == std::future_status::ready);
@@ -467,16 +467,16 @@ TEST_CASE("free wait_until future invalid returns ready", "[future_watcher]") {
 // Free functions: conditional wait for std::shared_future
 // ---------------------------------------------------------------------------
 
-TEST_CASE("free wait_for shared_future condition true interrupts immediately", "[future_watcher]") {
+TEST_CASE("free shared_future_wait_for condition true interrupts immediately", "[future_watcher]") {
     std::promise<int> p;
     auto fut = p.get_future().share();
 
-    auto s = mmupp::thrd::wait_for(fut, std::chrono::seconds(5),
+    auto s = mmupp::thrd::shared_future_wait_for(fut, std::chrono::seconds(5),
                                    []() { return true; });
     CHECK(s == std::future_status::timeout);
 }
 
-TEST_CASE("free wait_for shared_future fulfilled returns ready", "[future_watcher]") {
+TEST_CASE("free shared_future_wait_for fulfilled returns ready", "[future_watcher]") {
     std::promise<int> p;
     auto fut = p.get_future().share();
     std::thread t([&p]() {
@@ -484,14 +484,14 @@ TEST_CASE("free wait_for shared_future fulfilled returns ready", "[future_watche
         p.set_value(3);
     });
 
-    auto s = mmupp::thrd::wait_for(fut, std::chrono::seconds(5),
+    auto s = mmupp::thrd::shared_future_wait_for(fut, std::chrono::seconds(5),
                                    []() { return false; });
     t.join();
     CHECK(s == std::future_status::ready);
     CHECK(fut.get() == 3);
 }
 
-TEST_CASE("free wait_for shared_future condition flips true mid-wait", "[future_watcher]") {
+TEST_CASE("free shared_future_wait_for condition flips true mid-wait", "[future_watcher]") {
     std::promise<int> p;
     auto fut = p.get_future().share();
     std::atomic<bool> flag{false};
@@ -501,7 +501,7 @@ TEST_CASE("free wait_for shared_future condition flips true mid-wait", "[future_
     });
 
     auto t0 = std::chrono::steady_clock::now();
-    auto s = mmupp::thrd::wait_for(fut, std::chrono::seconds(10),
+    auto s = mmupp::thrd::shared_future_wait_for(fut, std::chrono::seconds(10),
                                    [&]() { return flag.load(); });
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t0).count();
@@ -512,12 +512,12 @@ TEST_CASE("free wait_for shared_future condition flips true mid-wait", "[future_
     CHECK(elapsed < 2000);
 }
 
-TEST_CASE("free wait_for shared_future timeout returns timeout", "[future_watcher]") {
+TEST_CASE("free shared_future_wait_for timeout returns timeout", "[future_watcher]") {
     std::promise<int> p;
     auto fut = p.get_future().share();
 
     auto t0 = std::chrono::steady_clock::now();
-    auto s = mmupp::thrd::wait_for(fut, std::chrono::milliseconds(100),
+    auto s = mmupp::thrd::shared_future_wait_for(fut, std::chrono::milliseconds(100),
                                    []() { return false; });
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t0).count();
@@ -527,24 +527,24 @@ TEST_CASE("free wait_for shared_future timeout returns timeout", "[future_watche
     CHECK(elapsed < 500);
 }
 
-TEST_CASE("free wait_for shared_future invalid returns ready", "[future_watcher]") {
+TEST_CASE("free shared_future_wait_for invalid returns ready", "[future_watcher]") {
     std::shared_future<int> fut;
-    auto s = mmupp::thrd::wait_for(fut, std::chrono::seconds(10),
+    auto s = mmupp::thrd::shared_future_wait_for(fut, std::chrono::seconds(10),
                                    []() { return false; });
     CHECK(s == std::future_status::ready);
 }
 
-TEST_CASE("free wait_until shared_future condition true interrupts immediately", "[future_watcher]") {
+TEST_CASE("free shared_future_wait_until condition true interrupts immediately", "[future_watcher]") {
     std::promise<int> p;
     auto fut = p.get_future().share();
 
-    auto s = mmupp::thrd::wait_until(
+    auto s = mmupp::thrd::shared_future_wait_until(
         fut, std::chrono::steady_clock::now() + std::chrono::seconds(5),
         []() { return true; });
     CHECK(s == std::future_status::timeout);
 }
 
-TEST_CASE("free wait_until shared_future fulfilled returns ready", "[future_watcher]") {
+TEST_CASE("free shared_future_wait_until fulfilled returns ready", "[future_watcher]") {
     std::promise<int> p;
     auto fut = p.get_future().share();
     std::thread t([&p]() {
@@ -552,7 +552,7 @@ TEST_CASE("free wait_until shared_future fulfilled returns ready", "[future_watc
         p.set_value(4);
     });
 
-    auto s = mmupp::thrd::wait_until(
+    auto s = mmupp::thrd::shared_future_wait_until(
         fut, std::chrono::steady_clock::now() + std::chrono::seconds(5),
         []() { return false; });
     t.join();
@@ -560,12 +560,12 @@ TEST_CASE("free wait_until shared_future fulfilled returns ready", "[future_watc
     CHECK(fut.get() == 4);
 }
 
-TEST_CASE("free wait_until shared_future timeout_time returns timeout", "[future_watcher]") {
+TEST_CASE("free shared_future_wait_until timeout_time returns timeout", "[future_watcher]") {
     std::promise<int> p;
     auto fut = p.get_future().share();
 
     auto t0 = std::chrono::steady_clock::now();
-    auto s = mmupp::thrd::wait_until(
+    auto s = mmupp::thrd::shared_future_wait_until(
         fut, std::chrono::steady_clock::now() + std::chrono::milliseconds(100),
         []() { return false; });
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -576,19 +576,19 @@ TEST_CASE("free wait_until shared_future timeout_time returns timeout", "[future
     CHECK(elapsed < 500);
 }
 
-TEST_CASE("free wait_until shared_future invalid returns ready", "[future_watcher]") {
+TEST_CASE("free shared_future_wait_until invalid returns ready", "[future_watcher]") {
     std::shared_future<int> fut;
-    auto s = mmupp::thrd::wait_until(
+    auto s = mmupp::thrd::shared_future_wait_until(
         fut, std::chrono::steady_clock::now() + std::chrono::seconds(10),
         []() { return false; });
     CHECK(s == std::future_status::ready);
 }
 
-TEST_CASE("free wait_until shared_future system_clock works", "[future_watcher]") {
+TEST_CASE("free shared_future_wait_until system_clock works", "[future_watcher]") {
     std::promise<int> p;
     auto fut = p.get_future().share();
 
-    auto s = mmupp::thrd::wait_until(
+    auto s = mmupp::thrd::shared_future_wait_until(
         fut, std::chrono::system_clock::now() + std::chrono::milliseconds(50),
         []() { return false; });
     CHECK(s == std::future_status::timeout);
