@@ -173,6 +173,45 @@ public:
         return f_.wait_for(timeout_duration);
     }
 
+    // Conditional timed wait: polls the future in small intervals up to
+    // timeout_duration. After each poll, calls condition(); if condition()
+    // returns true the wait is interrupted early.
+    // Returns std::future_status::ready when the future is fulfilled,
+    // std::future_status::timeout when the total duration expires or the
+    // condition interrupted. The caller should check the condition variable
+    // separately to distinguish between timeout and early interruption.
+    template <typename Rep, typename Period, typename Func>
+    std::future_status wait_for(
+        const std::chrono::duration<Rep, Period>& timeout_duration,
+        Func&& condition) const
+    {
+        if (!f_.valid())
+            return std::future_status::ready;
+
+        using namespace std::chrono;
+        auto deadline = steady_clock::now() + timeout_duration;
+        constexpr auto poll_slice = milliseconds(50);
+
+        while (true)
+        {
+            auto now = steady_clock::now();
+            if (now >= deadline)
+                break;
+
+            auto remaining = duration_cast<milliseconds>(deadline - now);
+            auto slice = (remaining < poll_slice) ? remaining : poll_slice;
+
+            auto status = f_.wait_for(slice);
+            if (status == std::future_status::ready)
+                return std::future_status::ready;
+
+            if (condition())
+                break;
+        }
+
+        return f_.wait_for(seconds(0));
+    }
+
     // Wait until the given time point
     template <typename Clock, typename Duration>
     std::future_status wait_until(
@@ -181,6 +220,40 @@ public:
         if (!f_.valid())
             return std::future_status::ready;
         return f_.wait_until(timeout_time);
+    }
+
+    // Conditional version: polls in small intervals until timeout_time.
+    // After each poll, calls condition(); if condition() returns true the
+    // wait is interrupted early.
+    template <typename Clock, typename Duration, typename Func>
+    std::future_status wait_until(
+        const std::chrono::time_point<Clock, Duration>& timeout_time,
+        Func&& condition) const
+    {
+        if (!f_.valid())
+            return std::future_status::ready;
+
+        using namespace std::chrono;
+        constexpr auto poll_slice = milliseconds(50);
+
+        while (true)
+        {
+            auto now = Clock::now();
+            if (now >= timeout_time)
+                break;
+
+            auto remaining = duration_cast<milliseconds>(timeout_time - now);
+            auto slice = (remaining < poll_slice) ? remaining : poll_slice;
+
+            auto status = f_.wait_for(slice);
+            if (status == std::future_status::ready)
+                return std::future_status::ready;
+
+            if (condition())
+                break;
+        }
+
+        return f_.wait_for(seconds(0));
     }
 
     // Check whether a future has been associated (i.e. set_future was called)
