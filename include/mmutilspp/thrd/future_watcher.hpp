@@ -323,6 +323,106 @@ private:
     shared_status_ptr     status_;
 };
 
+// ============================================================
+// Free functions: conditional wait for std::future and std::shared_future
+// ============================================================
+
+namespace detail {
+    constexpr auto conditional_poll_slice = std::chrono::milliseconds(50);
+
+    // Polls fut.wait_for(slice) in a loop up to total_timeout, calling
+    // condition() after each slice. Returns ready if fulfilled, timeout otherwise.
+    template <typename Fut, typename Cond>
+    std::future_status poll_future_for(Fut& fut, std::chrono::milliseconds total_timeout,
+                                       Cond&& condition)
+    {
+        auto deadline = std::chrono::steady_clock::now() + total_timeout;
+
+        while (true)
+        {
+            auto now = std::chrono::steady_clock::now();
+            if (now >= deadline)
+                break;
+
+            auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now);
+            auto slice = (remaining < conditional_poll_slice) ? remaining : conditional_poll_slice;
+
+            auto status = fut.wait_for(slice);
+            if (status == std::future_status::ready)
+                return std::future_status::ready;
+
+            if (condition())
+                break;
+        }
+
+        return fut.wait_for(std::chrono::seconds(0));
+    }
+}
+
+// ── std::future ──────────────────────────────────────────────────────────────
+
+template <typename T, typename Rep, typename Period, typename Func>
+std::future_status wait_for(
+    std::future<T>& fut,
+    const std::chrono::duration<Rep, Period>& timeout_duration,
+    Func&& condition)
+{
+    if (!fut.valid())
+        return std::future_status::ready;
+    return detail::poll_future_for(
+        fut,
+        std::chrono::duration_cast<std::chrono::milliseconds>(timeout_duration),
+        std::forward<Func>(condition));
+}
+
+template <typename T, typename Clock, typename Duration, typename Func>
+std::future_status wait_until(
+    std::future<T>& fut,
+    const std::chrono::time_point<Clock, Duration>& timeout_time,
+    Func&& condition)
+{
+    if (!fut.valid())
+        return std::future_status::ready;
+    auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+        timeout_time - Clock::now());
+    if (remaining.count() <= 0)
+        remaining = std::chrono::milliseconds(0);
+    return detail::poll_future_for(fut, remaining,
+                                   std::forward<Func>(condition));
+}
+
+// ── std::shared_future ───────────────────────────────────────────────────────
+
+template <typename T, typename Rep, typename Period, typename Func>
+std::future_status wait_for(
+    const std::shared_future<T>& fut,
+    const std::chrono::duration<Rep, Period>& timeout_duration,
+    Func&& condition)
+{
+    if (!fut.valid())
+        return std::future_status::ready;
+    return detail::poll_future_for(
+        fut,
+        std::chrono::duration_cast<std::chrono::milliseconds>(timeout_duration),
+        std::forward<Func>(condition));
+}
+
+template <typename T, typename Clock, typename Duration, typename Func>
+std::future_status wait_until(
+    const std::shared_future<T>& fut,
+    const std::chrono::time_point<Clock, Duration>& timeout_time,
+    Func&& condition)
+{
+    if (!fut.valid())
+        return std::future_status::ready;
+    auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+        timeout_time - Clock::now());
+    if (remaining.count() <= 0)
+        remaining = std::chrono::milliseconds(0);
+    return detail::poll_future_for(fut, remaining,
+                                   std::forward<Func>(condition));
+}
+
 }}
 
 #endif // !MMUPP_THRD_FUTURE_WATCHER_HPP_INCLUDED
