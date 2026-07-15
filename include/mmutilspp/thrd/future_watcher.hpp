@@ -184,6 +184,13 @@ public:
     // ---- Future operations ----
     void set_future(const std::shared_future<T>& _f) { f_ = _f; }
 
+    std::promise<T> get_promise()
+    {
+        std::promise<T> p;
+        f_ = p.get_future().share();
+        return p;
+    }
+
     // Block until the future is ready
     void wait() const
     {
