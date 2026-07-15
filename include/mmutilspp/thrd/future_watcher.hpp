@@ -96,6 +96,18 @@ public:
     [[nodiscard]] bool valid() const noexcept { return status_ != nullptr; }
     explicit operator bool() const noexcept   { return valid(); }
 
+    void set_progress(int _progress)
+    {
+        if (status_)
+            status_->set_progress(_progress);
+    }
+
+    void increment_progress(int _step = 1)
+    {
+        if (status_)
+            status_->increment_progress(_step);
+    }
+
 private:
     template <typename T> friend struct shared_future_watcher;
     friend class cancel_source;
@@ -153,6 +165,21 @@ public:
     shared_future_watcher()
         : status_(std::make_shared<shared_status>())
     {}
+
+    // if T is void
+    void set_value()
+    {
+        std::promise<T> p;
+        p.set_value();
+        f_ = p.get_future().share();
+    }
+
+    void set_value(const T& _value)
+    {
+        std::promise<T> p;
+        p.set_value(_value);
+        f_ = p.get_future().share();
+    }
 
     // ---- Future operations ----
     void set_future(const std::shared_future<T>& _f) { f_ = _f; }
