@@ -14,7 +14,7 @@
 //   - single-quoted string literals (with backslash-escape sequences)
 //
 // Guard variables injected into the formula are named
-//   __mmutils_loop_guard_0__, __mmutils_loop_guard_1__, ...
+//   mmutils_loop_guard_0__, mmutils_loop_guard_1__, ...
 // They are declared directly inside the returned formula string using exprtk's
 // `var` keyword, so no extra symbol_table registration is required.  The
 // `loop_count` field of the returned struct tells the caller how many guard
@@ -24,14 +24,14 @@
 //   auto res = mmupp::openext::exprtk::guard_formula_loops(
 //       "while (x < 100) { x := x + 1; }");
 //   // res.loop_count == 1
-//   // res.formula begins with: var __mmutils_loop_guard_0__ := 0;
+//   // res.formula begins with: var mmutils_loop_guard_0__ := 0;
 //   // No sym_table.add_variable() calls needed.
 //
 // Guard injection strategy:
-//   while (COND)        → while (((__mmutils_loop_guard_N__ := __mmutils_loop_guard_N__ + 1) <= MAX) and (COND))
-//   for (I; COND; S)    → for (I; ((__mmutils_loop_guard_N__ := __mmutils_loop_guard_N__ + 1) <= MAX) and (COND); S)
-//   for (I; ; S)        → for (I; (__mmutils_loop_guard_N__ := __mmutils_loop_guard_N__ + 1) <= MAX; S)
-//   repeat B until (C)  → repeat B until ((C) or ((__mmutils_loop_guard_N__ := __mmutils_loop_guard_N__ + 1) >= MAX))
+//   while (COND)        → while (((mmutils_loop_guard_N__ := mmutils_loop_guard_N__ + 1) <= MAX) and (COND))
+//   for (I; COND; S)    → for (I; ((mmutils_loop_guard_N__ := mmutils_loop_guard_N__ + 1) <= MAX) and (COND); S)
+//   for (I; ; S)        → for (I; (mmutils_loop_guard_N__ := mmutils_loop_guard_N__ + 1) <= MAX; S)
+//   repeat B until (C)  → repeat B until ((C) or ((mmutils_loop_guard_N__ := mmutils_loop_guard_N__ + 1) >= MAX))
 
 #include "detail/formula_scanner.h"
 
@@ -49,16 +49,16 @@ namespace exprtk {
 struct loop_guard_result
 {
     std::string formula;      ///< Rewritten formula with iteration guards injected.
-                              ///< Prepended with `var __mmutils_loop_guard_N__ := 0;`
+                              ///< Prepended with `var mmutils_loop_guard_N__ := 0;`
                               ///< declarations for each guarded loop.
     std::size_t loop_count;   ///< Number of loops guarded; equals the number of
-                              ///< `var __mmutils_loop_guard_N__` declarations
+                              ///< `var mmutils_loop_guard_N__` declarations
                               ///< prepended to the formula.
 };
 
 inline std::string guard_var_name_prefix()
 {
-    return "__mmutils_loop_guard_";
+    return "mmutils_loop_guard_";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -143,7 +143,7 @@ inline loop_guard_result do_guard(std::string_view formula,
             std::size_t rparen = sc.find_matching_rparen();
             if (rparen == std::string_view::npos) continue;
 
-            // Insert after '(': ((__mmutils_loop_guard_N__ := ... + 1) <= MAX) and (
+            // Insert after '(': ((mmutils_loop_guard_N__ := ... + 1) <= MAX) and (
             splices.push_back({lparen + 1,
                 "((" + gvar + " := " + gvar + " + 1) <= " + max_s + ") and ("});
             // Insert before ')': )
@@ -242,7 +242,7 @@ inline loop_guard_result do_guard(std::string_view formula,
         // Any other identifier — already consumed, just continue.
     }
 
-    // Prepend `var __mmutils_loop_guard_N__ := 0;` declarations so that the
+    // Prepend `var mmutils_loop_guard_N__ := 0;` declarations so that the
     // returned formula is self-contained and requires no symbol_table setup.
     if (loop_count > 0)
     {
@@ -265,9 +265,9 @@ inline loop_guard_result do_guard(std::string_view formula,
 /// terminate after at most `max_iterations` iterations.
 ///
 /// For each loop N (0-based, in textual order) a guard variable named
-///   __mmutils_loop_guard_N__
+///   mmutils_loop_guard_N__
 /// is injected into the loop's controlling condition.  A corresponding
-/// `var __mmutils_loop_guard_N__ := 0;` declaration is prepended to the
+/// `var mmutils_loop_guard_N__ := 0;` declaration is prepended to the
 /// returned formula so no symbol_table registration is required.
 ///
 /// Comments (`//`, `#`, `/* */`) and single-quoted string literals are
