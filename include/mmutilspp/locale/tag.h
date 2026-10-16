@@ -7,6 +7,7 @@
 #include <cstring>
 #include <algorithm>
 
+#include <memepp/string.hpp>
 #include <memepp/string_view.hpp>
 #include <memepp/hash/std_hash.hpp>
 
@@ -95,6 +96,39 @@ struct simple_tag
         tag.region_ = region_;
         tag.valid_ = valid_;
         return tag;
+    }
+
+    //! \brief Serialize into a BCP 47 tag string, e.g. "zh-Hans-CN".
+    //! \details Empty subtags are skipped together with their separator, so a
+    //!          language-only tag yields "en" and a lang-region tag yields
+    //!          "en-US". An invalid tag yields an empty string.
+    inline memepp::string to_string() const
+    {
+        // Longest well-formed tag: "zho-Hans-419" = 3 + 1 + 4 + 1 + 3 = 12 bytes.
+        char buf[16] = { 0 };
+        size_t len = 0;
+
+        auto append_subtag = [&buf, &len](const subtag& _part) noexcept {
+            for (size_t i = 0; i < _part.size(); ++i)
+                buf[len++] = static_cast<char>(_part.data()[i]);
+        };
+
+        if (!valid_)
+            return memepp::string{};
+
+        append_subtag(language_);
+
+        if (!script_.empty()) {
+            buf[len++] = '-';
+            append_subtag(script_);
+        }
+
+        if (!region_.empty()) {
+            buf[len++] = '-';
+            append_subtag(region_);
+        }
+
+        return memepp::string{ buf, static_cast<memepp::string::size_type>(len) };
     }
 
     inline static simple_tag parse_from(const memepp::string_view& _sv)
