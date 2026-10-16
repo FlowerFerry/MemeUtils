@@ -10,8 +10,8 @@ static simple_tag parse(const char* s) {
     return simple_tag::parse_from(memepp::string_view(s, std::strlen(s)));
 }
 
-// Returns std::string from a memepp::rune (empty rune → "")
-static std::string to_str(const memepp::rune& r) {
+// Returns std::string from a subtag (empty subtag → "")
+static std::string to_str(const mmupp::locale::subtag& r) {
     if (r.size() == 0) return {};
     return std::string(reinterpret_cast<const char*>(r.data()), r.size());
 }
