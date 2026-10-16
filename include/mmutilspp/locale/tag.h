@@ -8,6 +8,7 @@
 #include <algorithm>
 
 #include <memepp/string_view.hpp>
+#include <memepp/hash/std_hash.hpp>
 
 namespace mmupp {
 namespace locale {
@@ -207,31 +208,20 @@ struct hash<mmupp::locale::simple_tag>
 {
     size_t operator()(const mmupp::locale::simple_tag& _tag) const noexcept
     {
-        // Single-pass FNV-1a over language/script/region (a 0xFF byte separates
-        // fields so that e.g. {"en","US"} and {"enU","S"} cannot collide), then
-        // fold in the validity flag.
-        constexpr size_t fnv_offset_basis =
-            (sizeof(size_t) == 8) ? static_cast<size_t>(0xcbf29ce484222325ull)
-                                  : static_cast<size_t>(0x811c9dc5u);
-        constexpr size_t fnv_prime =
-            (sizeof(size_t) == 8) ? static_cast<size_t>(0x100000001b3ull)
-                                  : static_cast<size_t>(0x01000193u);
-
-        size_t h = fnv_offset_basis;
-        auto feed = [&h](const mmupp::locale::subtag& _s) noexcept {
-            const uint8_t* p = _s.data();
-            for (size_t i = 0; i < _s.size(); ++i) {
-                h ^= p[i];
-                h *= fnv_prime;
-            }
-            h ^= 0xffu;
-            h *= fnv_prime;
+        // FNV-1a via memepp's shared primitive. Feed each subtag separately
+        // and combine with std::hash<size_t> so that field boundaries matter
+        // (e.g. {"en","US"} vs {"enU","S"} produce different hashes).
+        size_t h = 0;
+        auto combine = [&h](size_t _part) noexcept {
+            h ^= _part + 0x9e3779b9 + (h << 6) + (h >> 2);
         };
-        feed(_tag.language());
-        feed(_tag.script());
-        feed(_tag.region());
-        h ^= static_cast<size_t>(_tag.valid());
-        h *= fnv_prime;
+        combine(memepp::hash::details::hash_value_with_bytes(
+            _tag.language().data(), _tag.language().size()));
+        combine(memepp::hash::details::hash_value_with_bytes(
+            _tag.script().data(), _tag.script().size()));
+        combine(memepp::hash::details::hash_value_with_bytes(
+            _tag.region().data(), _tag.region().size()));
+        combine(static_cast<size_t>(_tag.valid()));
         return h;
     }
 };
