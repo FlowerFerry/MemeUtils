@@ -49,6 +49,28 @@ FetchContent_Declare(
 )
 FetchContent_Populate(span-lite)
 
+# ── yyjson ────────────────────────────────────────────────────────────────────
+FetchContent_Declare(
+  yyjson
+  GIT_REPOSITORY https://${GIT_HOST}/ibireme/yyjson.git
+  GIT_TAG 0.10.0
+  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/yyjson
+)
+set(YYJSON_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(YYJSON_BUILD_FUZZER OFF CACHE BOOL "" FORCE)
+set(YYJSON_BUILD_DOC OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(yyjson)
+
+# ── rapidjson (header-only, populate only) ───────────────────────────────────
+FetchContent_Declare(
+  rapidjson
+  GIT_REPOSITORY https://${GIT_HOST}/Tencent/rapidjson.git
+  GIT_TAG v1.1.0
+  GIT_SUBMODULES ""
+  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/rapidjson
+)
+FetchContent_Populate(rapidjson)
+
 # ── Test executable ───────────────────────────────────────────────────────────
 set(SOURCES
     test_value_range.cpp
@@ -62,6 +84,8 @@ set(SOURCES
     test_exprtk_noncoded.cpp
     test_program_path.cpp
     test_span2d.cpp
+    test_yyjson_number.cpp
+    test_rapidjson_to_yyjson.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
@@ -76,6 +100,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${PARENT_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/MemeString/include
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/span-lite/include
+    ${rapidjson_SOURCE_DIR}/include
 )
 
 if(MSVC)
@@ -86,6 +111,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Catch2::Catch2WithMain
     ${MEMESTRING_PROJECT_NAME}
     concurrentqueue
+    yyjson
 )
 
 add_custom_command(

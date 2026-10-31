@@ -593,3 +593,208 @@ TEST_CASE("free shared_future_wait_until system_clock works", "[future_watcher]"
         []() { return false; });
     CHECK(s == std::future_status::timeout);
 }
+
+// ---------------------------------------------------------------------------
+// cancel_source / cancel_token
+// ---------------------------------------------------------------------------
+
+TEST_CASE("default cancel_token is invalid and never cancelled", "[future_watcher]") {
+    mmupp::thrd::cancel_token tok;
+    CHECK_FALSE(tok.valid());
+    CHECK_FALSE(static_cast<bool>(tok));
+    CHECK_FALSE(tok.is_cancelled());
+}
+
+TEST_CASE("default cancel_token progress calls are no-ops", "[future_watcher]") {
+    mmupp::thrd::cancel_token tok;
+    tok.set_progress(50);
+    tok.increment_progress(10);
+    // must not crash; nothing to assert beyond survival
+    CHECK_FALSE(tok.valid());
+}
+
+TEST_CASE("cancel_source request_cancel returns true once, false after", "[future_watcher]") {
+    auto status = std::make_shared<shared_status>();
+    mmupp::thrd::cancel_source src(status);
+
+    CHECK(src.request_cancel());
+    CHECK_FALSE(src.request_cancel());
+    CHECK(src.is_cancelled());
+}
+
+TEST_CASE("cancel_source token propagates cancellation", "[future_watcher]") {
+    auto status = std::make_shared<shared_status>();
+    mmupp::thrd::cancel_source src(status);
+    auto tok = src.token();
+
+    CHECK(tok.valid());
+    CHECK_FALSE(tok.is_cancelled());
+    src.request_cancel();
+    CHECK(tok.is_cancelled());
+}
+
+TEST_CASE("cancel_token set_progress and increment_progress reach shared_status", "[future_watcher]") {
+    auto status = std::make_shared<shared_status>();
+    status->set_progress_range(0, 100);
+    mmupp::thrd::cancel_source src(status);
+    auto tok = src.token();
+
+    tok.set_progress(40);
+    CHECK_THAT(status->progress_percent(), Catch::Matchers::WithinAbs(0.4, 1e-9));
+    tok.increment_progress(10);
+    CHECK_THAT(status->progress_percent(), Catch::Matchers::WithinAbs(0.5, 1e-9));
+}
+
+TEST_CASE("watcher get_cancel_source and get_cancel_token share state", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    auto src = watcher.get_cancel_source();
+    auto tok = watcher.get_cancel_token();
+
+    CHECK_FALSE(watcher.should_cancel());
+    CHECK(src.request_cancel());
+    CHECK(tok.is_cancelled());
+    CHECK(watcher.should_cancel());
+    CHECK(watcher.is_cancelled());
+}
+
+TEST_CASE("should_cancel mirrors is_cancelled", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    watcher.set_cancel();
+    CHECK(watcher.should_cancel());
+    CHECK(watcher.is_cancelled());
+}
+
+// ---------------------------------------------------------------------------
+// set_value / get_promise / valid / wait
+// ---------------------------------------------------------------------------
+
+TEST_CASE("set_value(int) fulfills the future", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    watcher.set_value(77);
+    CHECK(watcher.valid());
+    CHECK(watcher.is_ready());
+    CHECK(watcher.get_result() == 77);
+}
+
+TEST_CASE("set_value() for void watcher fulfills the future", "[future_watcher]") {
+    shared_future_watcher<void> watcher;
+    watcher.set_value();
+    CHECK(watcher.valid());
+    CHECK(watcher.is_ready());
+}
+
+TEST_CASE("get_promise returns a promise that fulfills the watcher", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    auto p = watcher.get_promise();
+    CHECK(watcher.valid());
+    CHECK_FALSE(watcher.is_ready());
+    p.set_value(5);
+    CHECK(watcher.is_ready());
+    CHECK(watcher.get_result() == 5);
+}
+
+TEST_CASE("valid is false before any future is set", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    CHECK_FALSE(watcher.valid());
+}
+
+TEST_CASE("wait returns immediately when future already ready", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    std::promise<int> p;
+    watcher.set_future(p.get_future().share());
+    p.set_value(1);
+    watcher.wait();  // must not block
+    CHECK(watcher.is_ready());
+}
+
+TEST_CASE("wait on invalid future is a safe no-op", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    watcher.wait();
+    CHECK_FALSE(watcher.valid());
+}
+
+TEST_CASE("wait unblocks when promise is set from another thread", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    std::promise<int> p;
+    watcher.set_future(p.get_future().share());
+
+    std::thread t([&p]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        p.set_value(9);
+    });
+    watcher.wait();
+    t.join();
+    CHECK(watcher.get_result() == 9);
+}
+
+// ---------------------------------------------------------------------------
+// unconditional wait_for / wait_until overloads
+// ---------------------------------------------------------------------------
+
+TEST_CASE("wait_for unconditional returns ready when fulfilled", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    std::promise<int> p;
+    watcher.set_future(p.get_future().share());
+    p.set_value(3);
+    auto s = watcher.wait_for(std::chrono::milliseconds(10));
+    CHECK(s == std::future_status::ready);
+}
+
+TEST_CASE("wait_for unconditional returns timeout when pending", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    std::promise<int> p;
+    watcher.set_future(p.get_future().share());
+    auto s = watcher.wait_for(std::chrono::milliseconds(50));
+    CHECK(s == std::future_status::timeout);
+}
+
+TEST_CASE("wait_for unconditional on invalid future returns ready", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    auto s = watcher.wait_for(std::chrono::seconds(1));
+    CHECK(s == std::future_status::ready);
+}
+
+TEST_CASE("wait_until unconditional returns ready when fulfilled", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    std::promise<int> p;
+    watcher.set_future(p.get_future().share());
+    p.set_value(3);
+    auto s = watcher.wait_until(std::chrono::steady_clock::now() + std::chrono::seconds(1));
+    CHECK(s == std::future_status::ready);
+}
+
+TEST_CASE("wait_until unconditional returns timeout when pending", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    std::promise<int> p;
+    watcher.set_future(p.get_future().share());
+    auto s = watcher.wait_until(std::chrono::steady_clock::now() + std::chrono::milliseconds(50));
+    CHECK(s == std::future_status::timeout);
+}
+
+TEST_CASE("wait_until unconditional on invalid future returns ready", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    auto s = watcher.wait_until(std::chrono::steady_clock::now() + std::chrono::seconds(1));
+    CHECK(s == std::future_status::ready);
+}
+
+// ---------------------------------------------------------------------------
+// get_result exception path
+// ---------------------------------------------------------------------------
+
+TEST_CASE("get_result throws future_error when no future set", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    CHECK_THROWS_AS(watcher.get_result(), std::future_error);
+}
+
+// ---------------------------------------------------------------------------
+// progress delegation through watcher
+// ---------------------------------------------------------------------------
+
+TEST_CASE("watcher progress delegation reaches shared_status", "[future_watcher]") {
+    shared_future_watcher<int> watcher;
+    watcher.set_progress_range(0, 200);
+    watcher.set_progress(50);
+    CHECK_THAT(watcher.progress_percent(), Catch::Matchers::WithinAbs(0.25, 1e-9));
+    watcher.increment_progress(50);
+    CHECK_THAT(watcher.progress_percent(), Catch::Matchers::WithinAbs(0.5, 1e-9));
+}

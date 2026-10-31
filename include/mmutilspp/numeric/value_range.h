@@ -106,7 +106,7 @@ public:
     bool operator>=(const value_range<T>& range) const noexcept { return range_size() >= range.range_size(); }
 
     value_range<T> operator+(const value_range<T>& range) const noexcept { return value_range<T>(min() + range.min(), max() + range.max()); }
-    value_range<T> operator-(const value_range<T>& range) const noexcept { return value_range<T>(min() - range.min(), max() - range.max()); }
+    value_range<T> operator-(const value_range<T>& range) const noexcept { return value_range<T>(min() - range.max(), max() - range.min()); }
     value_range<T> operator*(const value_range<T>& range) const noexcept { 
         auto minv = (std::min)({min() * range.min(), max() * range.min(), min() * range.max(), max() * range.max()});
         auto maxv = (std::max)({min() * range.min(), max() * range.min(), min() * range.max(), max() * range.max()});

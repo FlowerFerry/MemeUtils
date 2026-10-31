@@ -410,3 +410,86 @@ TEST_CASE("while missing opening paren after keyword is skipped gracefully", "[l
     CHECK(r.loop_count == 0);
     CHECK(r.formula == f);
 }
+
+TEST_CASE("while with unclosed condition paren is skipped", "[loop_guard]")
+{
+    // find_matching_rparen returns npos -> no injection.
+    const std::string f = "while (x < 10 { x := x + 1; }";
+    auto r = guard_formula_loops(f);
+    CHECK(r.loop_count == 0);
+    CHECK(r.formula == f);
+}
+
+TEST_CASE("for without semicolons is skipped gracefully", "[loop_guard]")
+{
+    // No ';' at depth 0 -> find_semicolon_at_depth0 returns npos.
+    const std::string f = "for (x < 5) { x := x + 1; }";
+    auto r = guard_formula_loops(f);
+    CHECK(r.loop_count == 0);
+    CHECK(r.formula == f);
+}
+
+TEST_CASE("for with only one semicolon is skipped", "[loop_guard]")
+{
+    const std::string f = "for (var i := 0; i < 5) { }";
+    auto r = guard_formula_loops(f);
+    CHECK(r.loop_count == 0);
+    CHECK(r.formula == f);
+}
+
+TEST_CASE("repeat without until is skipped gracefully", "[loop_guard]")
+{
+    const std::string f = "repeat { x := x + 1; }";
+    auto r = guard_formula_loops(f);
+    CHECK(r.loop_count == 0);
+    CHECK(r.formula == f);
+}
+
+TEST_CASE("repeat until without paren is skipped", "[loop_guard]")
+{
+    const std::string f = "repeat { x := x + 1; } until x > 5";
+    auto r = guard_formula_loops(f);
+    CHECK(r.loop_count == 0);
+    CHECK(r.formula == f);
+}
+
+TEST_CASE("repeat until with unclosed paren is skipped", "[loop_guard]")
+{
+    const std::string f = "repeat { x := x + 1; } until (x > 5";
+    auto r = guard_formula_loops(f);
+    CHECK(r.loop_count == 0);
+    CHECK(r.formula == f);
+}
+
+TEST_CASE("for with empty step section still gets guard", "[loop_guard]")
+{
+    // for (INIT; COND; ) — empty STEP must not break guard injection.
+    auto r = guard_formula_loops("for (var i := 0; i < 5; ) { x := x + 1; }");
+    CHECK(r.loop_count == 1);
+    CHECK(contains(r.formula, "mmutils_loop_guard_0__"));
+    CHECK(contains(r.formula, "and (i < 5)"));
+}
+
+TEST_CASE("for COND preceded by comment: guard inserted before real condition", "[loop_guard]")
+{
+    auto r = guard_formula_loops("for (var i := 0; /* skip */ i < 5; i += 1) { }");
+    CHECK(r.loop_count == 1);
+    // guard wraps the actual condition, not the comment
+    CHECK(contains(r.formula, "((mmutils_loop_guard_0__ := mmutils_loop_guard_0__ + 1) <= 1000000) and (i < 5)"));
+}
+
+TEST_CASE("guard variable declarations are prepended as preamble", "[loop_guard]")
+{
+    auto r = guard_formula_loops(
+        "while (a < 1) { a := a + 1; }; while (b < 1) { b := b + 1; }");
+    CHECK(r.loop_count == 2);
+    CHECK(r.formula.rfind("var mmutils_loop_guard_0__ := 0; var mmutils_loop_guard_1__ := 0; ", 0) == 0);
+}
+
+TEST_CASE("while keyword inside string literal in condition is not a loop", "[loop_guard]")
+{
+    auto r = guard_formula_loops("while (s != 'while (1) { }') { x := x + 1; }");
+    CHECK(r.loop_count == 1);
+    // only one guard injected (the outer while)
+    CHECK(!contains(r.formula, "mmutils_loop_guard_1__"));
+}

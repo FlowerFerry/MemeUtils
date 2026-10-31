@@ -175,7 +175,9 @@ public:
         f_ = p.get_future().share();
     }
 
-    void set_value(const T& _value)
+    template <typename U = T>
+    typename std::enable_if<!std::is_void<U>::value>::type
+    set_value(const U& _value)
     {
         std::promise<T> p;
         p.set_value(_value);

@@ -4,6 +4,8 @@
 #include <mutex>
 #include <set>
 #include <thread>
+#include <chrono>
+#include <stdexcept>
 
 using mmupp::thrd::dispatcher;
 
@@ -103,4 +105,59 @@ TEST_CASE("dispatcher destructor waits for all in-flight tasks", "[dispatcher]")
         // destructor is called here, which calls wait_for_tasks internally
     }
     CHECK(count.load() == 10);
+}
+
+TEST_CASE("dispatcher submit lvalue overload copies item into queue", "[dispatcher]") {
+    std::atomic<int> sum{0};
+    {
+        dispatcher<int> d(1, [&](int&& val) {
+            sum.fetch_add(val, std::memory_order_relaxed);
+        });
+        int a = 7, b = 35;
+        d.submit(a);   // const& overload
+        d.submit(b);   // const& overload
+        d.wait_for_tasks();
+    }
+    CHECK(sum.load() == 42);
+}
+
+TEST_CASE("dispatcher reset with default argument keeps hardware thread count", "[dispatcher]") {
+    std::atomic<int> count{0};
+    {
+        dispatcher<int> d(2, [&](int&&) { count.fetch_add(1, std::memory_order_relaxed); });
+        d.reset();  // 0 -> hardware concurrency (or 1)
+        for (int i = 0; i < 20; ++i)
+            d.submit(i);
+        d.wait_for_tasks();
+    }
+    CHECK(count.load() == 20);
+}
+
+TEST_CASE("dispatcher callback exception is swallowed and queue keeps draining", "[dispatcher]") {
+    std::atomic<int> seen{0};
+    std::atomic<int> thrown{0};
+    {
+        dispatcher<int> d(1, [&](int&& val) {
+            seen.fetch_add(1, std::memory_order_relaxed);
+            if (val % 2 == 0) {
+                thrown.fetch_add(1, std::memory_order_relaxed);
+                throw std::runtime_error("boom");
+            }
+        });
+        for (int i = 0; i < 10; ++i)
+            d.submit(i);
+        d.wait_for_tasks();
+        // must not hang or terminate: all 10 items were dequeued
+    }
+    CHECK(seen.load() == 10);
+    CHECK(thrown.load() == 5);
+}
+
+TEST_CASE("dispatcher wait_for_tasks returns immediately on empty queue", "[dispatcher]") {
+    dispatcher<int> d(2, [](int&&) {});
+    auto t0 = std::chrono::steady_clock::now();
+    d.wait_for_tasks();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - t0).count();
+    CHECK(elapsed < 500);
 }
