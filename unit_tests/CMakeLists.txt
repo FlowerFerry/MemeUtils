@@ -62,7 +62,6 @@ set(SOURCES
     test_exprtk_noncoded.cpp
     test_program_path.cpp
     test_span2d.cpp
-    # test_translation.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
