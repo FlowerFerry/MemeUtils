@@ -39,6 +39,16 @@ FetchContent_Declare(
 FetchContent_Populate(concurrentqueue)
 add_subdirectory(deps/concurrentqueue)
 
+# ── span-lite ─────────────────────────────────────────────────────────────────
+FetchContent_Declare(
+  span-lite
+  GIT_REPOSITORY https://${GIT_HOST}/martinmoene/span-lite.git
+  GIT_TAG master
+  GIT_SUBMODULES ""
+  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/span-lite
+)
+FetchContent_Populate(span-lite)
+
 # ── Test executable ───────────────────────────────────────────────────────────
 set(SOURCES
     test_value_range.cpp
@@ -66,7 +76,7 @@ message(STATUS "PARENT_INCLUDE_DIR: ${PARENT_INCLUDE_DIR}")
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${PARENT_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/MemeString/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/span-lite/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/deps/span-lite/include
 )
 
 if(MSVC)
