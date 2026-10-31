@@ -2,8 +2,10 @@
 #ifndef MMUPP_NUMERIC_VALUE_RANGE_H_INCLUDED
 #define MMUPP_NUMERIC_VALUE_RANGE_H_INCLUDED
 
+#include <algorithm>
 #include <limits>
 #include <type_traits>
+#include <utility>
 
 #ifdef min
 #define MIN_ORIGINAL min
