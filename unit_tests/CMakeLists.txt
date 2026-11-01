@@ -65,7 +65,7 @@ FetchContent_MakeAvailable(yyjson)
 FetchContent_Declare(
   rapidjson
   GIT_REPOSITORY https://${GIT_HOST}/Tencent/rapidjson.git
-  GIT_TAG v1.1.0
+  GIT_TAG master
   GIT_SUBMODULES ""
   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/rapidjson
 )
