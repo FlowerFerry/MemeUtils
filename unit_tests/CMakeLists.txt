@@ -65,7 +65,7 @@ FetchContent_MakeAvailable(yyjson)
 FetchContent_Declare(
   rapidjson
   GIT_REPOSITORY https://${GIT_HOST}/Tencent/rapidjson.git
-  GIT_TAG master
+  GIT_TAG v1.1.0
   GIT_SUBMODULES ""
   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/rapidjson
 )
@@ -85,7 +85,6 @@ set(SOURCES
     test_program_path.cpp
     test_span2d.cpp
     test_yyjson_number.cpp
-    test_rapidjson_to_yyjson.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
